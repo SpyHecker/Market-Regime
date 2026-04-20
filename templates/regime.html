@@ -1,0 +1,243 @@
+{% extends "app_page.html" %}
+
+{% block page_content %}
+<style>
+.header-card { background: var(--panel); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+.header-title { font-family: var(--fh); font-size: 18px; font-weight: 700; margin: 0 0 8px 0; }
+.header-desc { color: var(--text-2); font-size: 13px; margin: 0; }
+.controls-row { display: flex; gap: 15px; margin-bottom: 20px; }
+.control-group { display: flex; flex-direction: column; gap: 6px; }
+.control-label { font-size: 10px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.1em; }
+.control-select { padding: 8px 12px; background: rgba(0,212,255,0.1); border: 1px solid rgba(0,212,255,0.3); border-radius: 6px; color: white; font-size: 12px; min-width: 180px; }
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+.stat-box { background: var(--panel); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 18px; }
+.stat-label { font-size: 11px; color: var(--text-3); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.1em; }
+.stat-value { font-size: 28px; font-weight: 700; margin-bottom: 4px; }
+.stat-sub { font-size: 12px; color: var(--text-2); }
+.chart-card { background: var(--panel); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+.chart-header { font-family: var(--fh); font-size: 14px; font-weight: 700; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.data-table th { padding: 12px; text-align: left; border-bottom: 2px solid rgba(255,255,255,0.1); color: var(--cyan); font-weight: 600; background: rgba(0,212,255,0.05); }
+.data-table td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.data-table tr:hover { background: rgba(0,212,255,0.03); }
+svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+.regime-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; }
+.regime-table td { padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.regime-table tr:first-child { font-weight: 600; color: var(--text-3); }
+</style>
+
+<!-- Header -->
+<div class="header-card">
+  <h2 class="header-title">📊 Regime Explorer</h2>
+  <p class="header-desc">Analyze market regimes with real-time data, historical trends, and risk-adjusted returns. Select a time period below to view detailed regime analysis.</p>
+</div>
+
+<!-- Controls -->
+<div class="controls-row">
+  <div class="control-group">
+    <label class="control-label">Time Period</label>
+    <select id="timePeriodSelect" class="control-select">
+      <option value="30">Last 30 Days</option>
+      <option value="90">Last 90 Days</option>
+      <option value="252" selected>Last 1 Year</option>
+      <option value="500">Last 2 Years</option>
+      <option value="1260">Last 5 Years</option>
+    </select>
+  </div>
+</div>
+
+<!-- Key Metrics -->
+<div class="stats-grid">
+  <div class="stat-box">
+    <div class="stat-label">Current Regime</div>
+    <div class="stat-value" id="current-regime" style="color: var(--cyan); font-size: 24px;">Bull</div>
+    <div class="stat-sub" id="regime-conf">Confidence: --</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-label">Bull Market Days</div>
+    <div class="stat-value" id="bull-days" style="color: var(--green);">0</div>
+    <div class="stat-sub" id="bull-pct">0% of period</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-label">Avg Bull Return</div>
+    <div class="stat-value" id="bull-return" style="color: var(--green); font-size: 22px;">+0.00%</div>
+    <div class="stat-sub">Daily average</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-label">Bull Sharpe Ratio</div>
+    <div class="stat-value" id="bull-sharpe" style="color: var(--cyan); font-size: 24px;">0.00</div>
+    <div class="stat-sub">Risk-adjusted</div>
+  </div>
+</div>
+
+<!-- Regime Distribution Pie Chart -->
+<div class="chart-card">
+  <div class="chart-header">📊 Regime Distribution (%)</div>
+  <svg id="regimeChart" viewBox="0 0 800 350" style="width: 100%; height: 350px;"></svg>
+</div>
+
+<!-- Regime Statistics Table -->
+<div class="chart-card">
+  <div class="chart-header">📈 Detailed Regime Statistics</div>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Regime</th>
+        <th style="text-align: right;">Days</th>
+        <th style="text-align: right;">% of Period</th>
+        <th style="text-align: right;">Avg Daily Return</th>
+        <th style="text-align: right;">Volatility</th>
+        <th style="text-align: right;">Sharpe Ratio</th>
+      </tr>
+    </thead>
+    <tbody id="regimeTable"></tbody>
+  </table>
+</div>
+
+<!-- Transitions Timeline -->
+<div class="chart-card">
+  <div class="chart-header">🔄 Recent Regime Transitions</div>
+  <div id="transitionsList" style="max-height: 400px; overflow-y: auto;"></div>
+</div>
+
+<script>
+let currentPeriodDays = 252;
+
+async function loadRegimeData(days) {
+  try {
+    const [historical, current] = await Promise.all([
+      fetch(`/api/historical_analysis?days=${days}`).then(r => r.json()),
+      fetch('/api/current_regime').then(r => r.json())
+    ]);
+
+    if (!historical || !historical.regimes) {
+      console.error('No regime data');
+      return;
+    }
+
+    const regimes = historical.regimes;
+    
+    // Update current regime and stats
+    document.getElementById('current-regime').textContent = current.regime;
+    document.getElementById('regime-conf').textContent = `Confidence: ${(current.confidence * 100).toFixed(1)}%`;
+
+    const bull = regimes.Bull || {};
+    document.getElementById('bull-days').textContent = bull.days || 0;
+    document.getElementById('bull-pct').textContent = `${(bull.percentage || 0).toFixed(1)}% of period`;
+    document.getElementById('bull-return').textContent = `${(bull.avg_return || 0).toFixed(2)}%`;
+    document.getElementById('bull-sharpe').textContent = `${(bull.sharpe_ratio || 0).toFixed(2)}`;
+
+    // Populate table
+    const table = document.getElementById('regimeTable');
+    table.innerHTML = '';
+    for (const [name, stats] of Object.entries(regimes)) {
+      const row = `
+        <tr>
+          <td><strong>${name}</strong></td>
+          <td style="text-align: right;">${stats.days}</td>
+          <td style="text-align: right;">${(stats.percentage || 0).toFixed(1)}%</td>
+          <td style="text-align: right; color: ${stats.avg_return > 0 ? 'var(--green)' : 'var(--red)'};">${(stats.avg_return || 0).toFixed(3)}%</td>
+          <td style="text-align: right;">${(stats.volatility || 0).toFixed(3)}%</td>
+          <td style="text-align: right;">${(stats.sharpe_ratio || 0).toFixed(2)}</td>
+        </tr>
+      `;
+      table.insertAdjacentHTML('beforeend', row);
+    }
+
+    // Draw pie chart
+    drawRegimeChart(regimes);
+
+    // Show transitions
+    if (historical.transitions && Array.isArray(historical.transitions)) {
+      const transList = document.getElementById('transitionsList');
+      if (historical.transitions.length > 0) {
+        transList.innerHTML = historical.transitions.slice(0, 12).map((t, i) => `
+          <div style="padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between;">
+            <span><strong>${i+1}.</strong> <span style="color: var(--cyan);">${t.from || '?'}</span> → <span style="color: var(--green);">${t.to || '?'}</span></span>
+            <span style="color: var(--text-3); font-family: var(--fm);">${t.date || '?'}</span>
+          </div>
+        `).join('');
+      }
+    }
+
+  } catch(e) {
+    console.error('Error:', e);
+  }
+}
+
+function drawRegimeChart(regimes) {
+  const svg = document.getElementById('regimeChart');
+  svg.innerHTML = '';
+  
+  const centerX = 200;
+  const centerY = 175;
+  const radius = 100;
+  
+  const colors = { 'Bull': '#00e676', 'Bear': '#ff3d57', 'Sideways': '#ffb300', 'Volatile': '#8b5cf6' };
+  
+  let angle = -Math.PI / 2;
+  let index = 0;
+  
+  for (const [regime, stats] of Object.entries(regimes)) {
+    const pct = (stats.percentage || 0) / 100;
+    const sliceAngle = pct * 2 * Math.PI;
+    const x1 = centerX + radius * Math.cos(angle);
+    const y1 = centerY + radius * Math.sin(angle);
+    const x2 = centerX + radius * Math.cos(angle + sliceAngle);
+    const y2 = centerY + radius * Math.sin(angle + sliceAngle);
+    const largeArc = pct > 0.5 ? 1 : 0;
+    
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', `M ${centerX} ${centerY} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`);
+    path.setAttribute('fill', colors[regime] || '#666');
+    path.setAttribute('opacity', '0.85');
+    path.setAttribute('stroke', 'rgba(0,0,0,0.3)');
+    path.setAttribute('stroke-width', '2');
+    svg.appendChild(path);
+    
+    // Label
+    const labelAngle = angle + sliceAngle / 2;
+    const labelX = centerX + (radius * 0.65) * Math.cos(labelAngle);
+    const labelY = centerY + (radius * 0.65) * Math.sin(labelAngle);
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', labelX);
+    text.setAttribute('y', labelY);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('fill', 'white');
+    text.setAttribute('font-size', '13');
+    text.setAttribute('font-weight', 'bold');
+    text.textContent = `${(pct * 100).toFixed(0)}%`;
+    svg.appendChild(text);
+    
+    // Legend
+    const legendX = 420;
+    const legendY = 50 + index * 50;
+    const box = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    box.setAttribute('x', legendX);
+    box.setAttribute('y', legendY);
+    box.setAttribute('width', '16');
+    box.setAttribute('height', '16');
+    box.setAttribute('fill', colors[regime] || '#666');
+    svg.appendChild(box);
+    
+    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    label.setAttribute('x', legendX + 24);
+    label.setAttribute('y', legendY + 13);
+    label.setAttribute('fill', 'white');
+    label.setAttribute('font-size', '13');
+    label.textContent = `${regime}: ${stats.days}d (${(pct*100).toFixed(1)}%)`;
+    svg.appendChild(label);
+    
+    angle += sliceAngle;
+    index++;
+  }
+}
+
+document.getElementById('timePeriodSelect').addEventListener('change', (e) => {
+  currentPeriodDays = parseInt(e.target.value);
+  loadRegimeData(currentPeriodDays);
+});
+
+document.addEventListener('DOMContentLoaded', () => loadRegimeData(252));
+</script>
+{% endblock %}

@@ -1,0 +1,113 @@
+{% extends "app_page.html" %}
+
+{% block page_content %}
+
+<style>
+    .docs-hero {
+        text-align: center;
+        padding: 40px 20px;
+        margin-bottom: 30px;
+        background: linear-gradient(135deg, rgba(0,212,255,0.05), rgba(139,92,246,0.05));
+        border: 1px solid rgba(255,255,255,0.05);
+        border-radius: 16px;
+    }
+    .docs-hero h1 { font-family: var(--fh); font-size: 32px; color: var(--cyan); margin-bottom: 15px; }
+    .docs-hero p { color: var(--text-2); font-size: 16px; max-width: 600px; margin: 0 auto; line-height: 1.6; }
+
+    .doc-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 24px;
+    }
+
+    .doc-card {
+        background: var(--panel);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 14px;
+        padding: 24px;
+        transition: all 0.3s ease;
+    }
+    .doc-card:hover { background: rgba(0,212,255,0.03); border-color: rgba(0,212,255,0.2); transform: translateY(-3px); }
+    
+    .doc-card-icon {
+        width: 48px; height: 48px; border-radius: 12px;
+        background: rgba(0,212,255,0.1); display: flex; align-items: center; justify-content: center;
+        margin-bottom: 20px; color: var(--cyan); font-size: 20px;
+    }
+    
+    .doc-card h3 { font-family: var(--fh); color: var(--text-1); font-size: 20px; margin-bottom: 12px; }
+    .doc-card p { color: var(--text-2); font-size: 14px; line-height: 1.7; margin-bottom: 16px; }
+
+    .regime-badge {
+        display: inline-block; padding: 4px 10px; border-radius: 6px; font-family: var(--fm); font-size: 11px; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.05em; font-weight: 600;
+    }
+    .badge-bull { background: rgba(0,230,118,0.1); color: var(--green); border: 1px solid rgba(0,230,118,0.3); }
+    .badge-bear { background: rgba(255,61,87,0.1); color: var(--red); border: 1px solid rgba(255,61,87,0.3); }
+    .badge-side { background: rgba(255,179,0,0.1); color: var(--amber); border: 1px solid rgba(255,179,0,0.3); }
+
+    .help-section {
+        margin-top: 40px; padding: 30px; text-align: center; border-radius: 14px;
+        background: rgba(139,92,246,0.05); border: 1px solid rgba(139,92,246,0.2);
+    }
+    .help-section h4 { font-family: var(--fh); font-size: 20px; color: var(--violet); margin-bottom: 10px; }
+</style>
+
+<div class="card" style="max-width: 1000px;">
+    
+    <div class="docs-hero">
+        <h1>How To Use MRDE</h1>
+        <p>The Multi-Regime Market Detection Engine analyzes live market data and classifies the market into distinct "Regimes" so you can trade with clarity.</p>
+    </div>
+
+    <!-- Core Features -->
+    <div class="doc-grid" style="margin-bottom: 30px;">
+        <div class="doc-card">
+            <div class="doc-card-icon">⚡</div>
+            <h3>1. The Dashboard</h3>
+            <p>Your main hub. Here you'll see the <b>Active Market Regime</b> updated in real-time, along with current volatility (VIX) and our Machine Learning Model's confidence score.</p>
+        </div>
+        <div class="doc-card">
+            <div class="doc-card-icon">📈</div>
+            <h3>2. Historical Analysis</h3>
+            <p>Use the Analysis tools to dive into the past. Filter by 1 Month, 1 Year, or 5 Years to see exactly how long previous bull or bear markets lasted.</p>
+        </div>
+        <div class="doc-card">
+            <div class="doc-card-icon">🧠</div>
+            <h3>3. ML Insights</h3>
+            <p>Curious how the algorithm thinks? The ML Insights page shows the raw mathematical features (like RSI and MACD) driving the current classification.</p>
+        </div>
+    </div>
+
+    <!-- Regimes Explained -->
+    <h2 class="h1" style="font-size: 24px; margin-bottom: 20px;">Understanding The Regimes</h2>
+    <div class="doc-grid">
+        <div class="doc-card">
+            <span class="regime-badge badge-bull">Bull Market</span>
+            <p>A fast-moving upward trend. Characterized by high investor confidence, low relative volatility, and consistent green day-over-day returns.</p>
+            <p style="color: var(--cyan); font-size: 12px; font-weight: 600;">STRATEGY: Favorable for long positions and momentum trades.</p>
+        </div>
+        
+        <div class="doc-card">
+            <span class="regime-badge badge-bear">Bear Market</span>
+            <p>A downward trend marked by investor fear, high volatility spikes, and unpredictable pullbacks. Risk is generally elevated.</p>
+            <p style="color: var(--cyan); font-size: 12px; font-weight: 600;">STRATEGY: Short positions, defensive plays, tight stop-losses.</p>
+        </div>
+        
+        <div class="doc-card">
+            <span class="regime-badge badge-side">Sideways / Neutral</span>
+            <p>The market is chopping up and down without a clear long-term direction. VIX is usually subdued but prices fail to break out.</p>
+            <p style="color: var(--cyan); font-size: 12px; font-weight: 600;">STRATEGY: Mean-reversion trading, option-selling strategies.</p>
+        </div>
+    </div>
+
+    <!-- Getting Help -->
+    <div class="help-section">
+        <h4>Need further assistance?</h4>
+        <p style="color: var(--text-2); font-size: 14px; max-width: 500px; margin: 0 auto;">
+            The engine automatically updates itself every 5 minutes. If data appears stale, navigate back to the Dashboard to force a rapid refresh.
+        </p>
+    </div>
+
+</div>
+
+{% endblock %}

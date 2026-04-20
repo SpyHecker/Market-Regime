@@ -1,0 +1,2284 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Market Regime Detection Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Antonio:wght@400;500;600;700&family=Figtree:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+/* ──────────────────────────────────────────────
+   TOKENS & RESET
+────────────────────────────────────────────── */
+:root {
+  --bg-void:    #030812;
+  --bg-deep:    #060d1f;
+  --bg-surface: #0c1630;
+  --bg-raised:  #101e40;
+
+  --cyan:   #00d4ff;
+  --cyan2:  #00a8cc;
+  --blue:   #3b7bff;
+  --blue2:  #1a4fd6;
+  --violet: #8b5cf6;
+  --violet2:#6d35e0;
+  --green:  #00e676;
+  --red:    #ff3d57;
+  --amber:  #ffb300;
+
+  --text-primary:   #eef2ff;
+  --text-secondary: #8b9cc4;
+  --text-muted:     #4a5780;
+
+  --border: rgba(255,255,255,0.07);
+  --glass-bg: rgba(255,255,255,0.035);
+  --glass-border: rgba(255,255,255,0.08);
+
+  --font-display: 'Antonio', sans-serif;
+  --font-body:    'Figtree', sans-serif;
+  --font-mono:    'JetBrains Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg-void);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+a { text-decoration: none; color: inherit; }
+
+/* ──────────────────────────────────────────────
+   NOISE TEXTURE + GRID OVERLAY
+────────────────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ──────────────────────────────────────────────
+   UTILITIES
+────────────────────────────────────────────── */
+.container { max-width: 1900px; margin: 0 auto; padding: 0 24px; }
+.section   { padding: 100px 0; position: relative; z-index: 1; }
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  display: inline-block;
+  margin-bottom: 16px;
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: clamp(32px, 5vw, 52px);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  margin-bottom: 18px;
+}
+
+.section-sub {
+  font-size: 17px;
+  color: var(--text-secondary);
+  max-width: 580px;
+  line-height: 1.75;
+}
+
+.glass-card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 99px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+}
+
+/* ──────────────────────────────────────────────
+   NAV
+────────────────────────────────────────────── */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  padding: 0 24px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(3,8,18,0.7);
+  backdrop-filter: blur(24px);
+  border-bottom: 1px solid var(--border);
+}
+
+.nav-logo {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  background: linear-gradient(90deg, var(--cyan), var(--blue));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.nav-logo span { color: var(--violet); -webkit-text-fill-color: var(--violet); }
+
+.nav-links {
+  display: flex;
+  gap: 32px;
+  list-style: none;
+}
+
+.nav-links a {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: color 0.2s;
+  letter-spacing: 0.03em;
+}
+
+.nav-links a:hover { color: var(--text-primary); }
+
+.nav-cta {
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--cyan), var(--blue));
+  color: #fff;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.nav-cta:hover { opacity: 0.88; transform: translateY(-1px); }
+
+/* ──────────────────────────────────────────────
+   HERO
+────────────────────────────────────────────── */
+#hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  padding-top: 80px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Gradient orbs */
+#hero::before, #hero::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  pointer-events: none;
+}
+#hero::before {
+  width: 700px; height: 700px;
+  background: radial-gradient(circle, rgba(59,123,255,0.18) 0%, transparent 70%);
+  top: -200px; right: -200px;
+}
+#hero::after {
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 70%);
+  bottom: -100px; left: -100px;
+}
+
+.hero-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: center;
+  width: 100%;
+}
+
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 99px;
+  background: rgba(0,212,255,0.08);
+  border: 1px solid rgba(0,212,255,0.2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--cyan);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+}
+
+.hero-eyebrow .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--cyan);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.8); }
+}
+
+h1 {
+  font-family: var(--font-display);
+  font-size: clamp(44px, 6vw, 76px);
+  line-height: 1.0;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 22px;
+}
+
+.h1-cyan   { color: var(--cyan); }
+.h1-white  { color: var(--text-primary); }
+.h1-violet { color: var(--violet); }
+
+.hero-sub {
+  font-size: 18px;
+  color: var(--text-secondary);
+  line-height: 1.75;
+  max-width: 480px;
+  margin-bottom: 36px;
+}
+
+.hero-ctas {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 48px;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 28px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--cyan), var(--blue));
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  transition: all 0.25s;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,212,255,0.25); }
+.btn-primary:hover::before { opacity: 1; }
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 28px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--glass-border);
+  cursor: pointer;
+  transition: all 0.25s;
+}
+
+.btn-ghost:hover { background: var(--glass-bg); border-color: rgba(255,255,255,0.15); }
+
+.hero-stats {
+  display: flex;
+  gap: 32px;
+}
+
+.hstat {
+  border-left: 2px solid var(--glass-border);
+  padding-left: 16px;
+}
+
+.hstat-num {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--cyan);
+  line-height: 1;
+}
+
+.hstat-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  letter-spacing: 0.04em;
+}
+
+/* Hero Dashboard Mock */
+.hero-visual {
+  position: relative;
+}
+
+.hero-dash {
+  background: rgba(12,22,48,0.8);
+  border: 1px solid rgba(0,212,255,0.12);
+  border-radius: 20px;
+  padding: 20px;
+  backdrop-filter: blur(30px);
+  box-shadow: 0 40px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,212,255,0.05);
+}
+
+.dash-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.dash-dots { display: flex; gap: 6px; }
+.dash-dot  { width: 10px; height: 10px; border-radius: 50%; }
+.dd-red    { background: #ff5f57; }
+.dd-amber  { background: #febc2e; }
+.dd-green  { background: #28c840; }
+
+.dash-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 0.12em;
+}
+
+/* Mini Regime Chart */
+.regime-chart-wrap {
+  position: relative;
+  height: 130px;
+  margin-bottom: 16px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(0,0,0,0.3);
+}
+
+.regime-chart-svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Regime Indicator Row */
+.regime-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.regime-chip {
+  flex: 1;
+  padding: 10px 8px;
+  border-radius: 10px;
+  text-align: center;
+  border: 1px solid;
+  transition: all 0.3s;
+}
+
+.rc-bull   { border-color: rgba(0,230,118,0.3); background: rgba(0,230,118,0.06); }
+.rc-bear   { border-color: rgba(255,61,87,0.3);  background: rgba(255,61,87,0.06);  }
+.rc-side   { border-color: rgba(255,179,0,0.3);  background: rgba(255,179,0,0.06);  }
+.rc-vol    { border-color: rgba(139,92,246,0.3); background: rgba(139,92,246,0.06); }
+
+.rc-name   { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; font-family: var(--font-mono); color: var(--text-muted); }
+.rc-val    { font-family: var(--font-display); font-size: 16px; font-weight: 700; margin-top: 2px; }
+.rc-bull .rc-val { color: var(--green); }
+.rc-bear .rc-val { color: var(--red);   }
+.rc-side .rc-val { color: var(--amber); }
+.rc-vol  .rc-val { color: var(--violet); }
+
+/* Metrics row */
+.dash-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.dash-metric {
+  background: rgba(0,0,0,0.25);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.dm-label { font-size: 9px; color: var(--text-muted); font-family: var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; }
+.dm-val   { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--text-primary); }
+.dm-val.up   { color: var(--green); }
+.dm-val.down { color: var(--red);   }
+
+/* Floating badge */
+.hero-badge {
+  position: absolute;
+  top: -20px; right: -24px;
+  background: rgba(139,92,246,0.15);
+  border: 1px solid rgba(139,92,246,0.3);
+  border-radius: 12px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  backdrop-filter: blur(20px);
+  animation: float 4s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
+
+.badge-icon { font-size: 20px; }
+.badge-text { font-size: 12px; line-height: 1.3; }
+.badge-label { font-weight: 700; color: var(--violet); font-family: var(--font-display); }
+.badge-sub   { color: var(--text-muted); font-size: 11px; font-family: var(--font-mono); }
+
+/* ──────────────────────────────────────────────
+   TICKER STRIP
+────────────────────────────────────────────── */
+.ticker-strip {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: rgba(6,13,31,0.9);
+  padding: 12px 0;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+.ticker-track {
+  display: flex;
+  gap: 48px;
+  animation: ticker 30s linear infinite;
+  white-space: nowrap;
+}
+
+@keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+
+.ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.ti-sym  { color: var(--text-primary); font-weight: 600; }
+.ti-up   { color: var(--green); }
+.ti-down { color: var(--red);   }
+.ti-dot  { color: var(--text-muted); }
+
+/* ──────────────────────────────────────────────
+   PROBLEM
+────────────────────────────────────────────── */
+#problem {
+  background: linear-gradient(180deg, var(--bg-void) 0%, var(--bg-deep) 100%);
+}
+
+.problem-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 80px;
+  align-items: center;
+}
+
+.problem-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.prob-card {
+  padding: 22px;
+  border-radius: 16px;
+  border: 1px solid;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.3s;
+}
+
+.prob-card:hover { transform: translateY(-4px); }
+
+.prob-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+
+.pc-bull { border-color: rgba(0,230,118,0.15); background: rgba(0,230,118,0.04); }
+.pc-bull::before { background: linear-gradient(90deg, var(--green), transparent); }
+
+.pc-bear { border-color: rgba(255,61,87,0.15); background: rgba(255,61,87,0.04); }
+.pc-bear::before { background: linear-gradient(90deg, var(--red), transparent); }
+
+.pc-side { border-color: rgba(255,179,0,0.15); background: rgba(255,179,0,0.04); }
+.pc-side::before { background: linear-gradient(90deg, var(--amber), transparent); }
+
+.pc-vol  { border-color: rgba(139,92,246,0.15); background: rgba(139,92,246,0.04); }
+.pc-vol::before  { background: linear-gradient(90deg, var(--violet), transparent); }
+
+.pc-icon { font-size: 28px; margin-bottom: 10px; }
+.pc-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.pc-bull .pc-title { color: var(--green); }
+.pc-bear .pc-title { color: var(--red); }
+.pc-side .pc-title { color: var(--amber); }
+.pc-vol  .pc-title { color: var(--violet); }
+
+.pc-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+
+/* ──────────────────────────────────────────────
+   HOW IT WORKS
+────────────────────────────────────────────── */
+#how {
+  background: var(--bg-deep);
+  position: relative;
+  overflow: hidden;
+}
+
+#how::before {
+  content: '';
+  position: absolute;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(0,212,255,0.06) 0%, transparent 70%);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.how-header { text-align: center; margin-bottom: 60px; }
+.how-header .section-sub { margin: 0 auto; }
+
+.how-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  position: relative;
+}
+
+/* Connector lines between steps */
+.how-steps::before {
+  content: '';
+  position: absolute;
+  top: 38px;
+  left: calc(12.5% + 20px);
+  right: calc(12.5% + 20px);
+  height: 1px;
+  background: linear-gradient(90deg, var(--cyan), var(--blue), var(--violet), rgba(139,92,246,0.2));
+  z-index: 0;
+}
+
+.how-step {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.step-orb {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  margin-bottom: 20px;
+  border: 1px solid;
+  position: relative;
+}
+
+.step-orb::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1px solid;
+  opacity: 0.3;
+}
+
+.so-1 { background: rgba(0,212,255,0.1); border-color: rgba(0,212,255,0.3); }
+.so-1::after { border-color: var(--cyan); }
+
+.so-2 { background: rgba(59,123,255,0.1); border-color: rgba(59,123,255,0.3); }
+.so-2::after { border-color: var(--blue); }
+
+.so-3 { background: rgba(139,92,246,0.1); border-color: rgba(139,92,246,0.3); }
+.so-3::after { border-color: var(--violet); }
+
+.so-4 { background: rgba(0,230,118,0.1); border-color: rgba(0,230,118,0.3); }
+.so-4::after { border-color: var(--green); }
+
+.step-num {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  letter-spacing: 0.15em;
+}
+
+.step-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.step-desc { font-size: 13.5px; color: var(--text-secondary); line-height: 1.65; }
+
+.step-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 14px;
+}
+
+.step-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(0,212,255,0.07);
+  border: 1px solid rgba(0,212,255,0.15);
+  color: var(--cyan);
+  letter-spacing: 0.06em;
+}
+
+/* ──────────────────────────────────────────────
+   REGIME TYPES
+────────────────────────────────────────────── */
+#regimes {
+  background: var(--bg-void);
+}
+
+.regimes-header { text-align: center; margin-bottom: 60px; }
+.regimes-header .section-sub { margin: 0 auto; }
+
+.regimes-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.regime-card {
+  padding: 30px 24px;
+  border-radius: 20px;
+  border: 1px solid;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.35s;
+  cursor: default;
+}
+
+.regime-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 60px;
+  background: linear-gradient(0deg, rgba(0,0,0,0.4), transparent);
+}
+
+.regime-card:hover { transform: translateY(-6px); }
+
+.rg-bull { border-color: rgba(0,230,118,0.2); background: linear-gradient(160deg, rgba(0,230,118,0.06), rgba(0,230,118,0.02)); }
+.rg-bear { border-color: rgba(255,61,87,0.2);  background: linear-gradient(160deg, rgba(255,61,87,0.06),  rgba(255,61,87,0.02));  }
+.rg-side { border-color: rgba(255,179,0,0.2);  background: linear-gradient(160deg, rgba(255,179,0,0.06),  rgba(255,179,0,0.02));  }
+.rg-vol  { border-color: rgba(139,92,246,0.2); background: linear-gradient(160deg, rgba(139,92,246,0.06), rgba(139,92,246,0.02)); }
+
+.rg-bull:hover { box-shadow: 0 20px 60px rgba(0,230,118,0.1); border-color: rgba(0,230,118,0.35); }
+.rg-bear:hover { box-shadow: 0 20px 60px rgba(255,61,87,0.1);  border-color: rgba(255,61,87,0.35);  }
+.rg-side:hover { box-shadow: 0 20px 60px rgba(255,179,0,0.1);  border-color: rgba(255,179,0,0.35);  }
+.rg-vol:hover  { box-shadow: 0 20px 60px rgba(139,92,246,0.1); border-color: rgba(139,92,246,0.35); }
+
+.rg-emoji { font-size: 36px; margin-bottom: 16px; }
+
+.rg-title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.rg-bull .rg-title { color: var(--green); }
+.rg-bear .rg-title { color: var(--red); }
+.rg-side .rg-title { color: var(--amber); }
+.rg-vol  .rg-title { color: var(--violet); }
+
+.rg-sub {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.rg-desc { font-size: 13.5px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 20px; }
+
+.rg-posture {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+}
+
+.rg-bull .rg-posture { background: rgba(0,230,118,0.12); color: var(--green); border: 1px solid rgba(0,230,118,0.25); }
+.rg-bear .rg-posture { background: rgba(255,61,87,0.12);  color: var(--red);   border: 1px solid rgba(255,61,87,0.25);  }
+.rg-side .rg-posture { background: rgba(255,179,0,0.12);  color: var(--amber); border: 1px solid rgba(255,179,0,0.25);  }
+.rg-vol  .rg-posture { background: rgba(139,92,246,0.12); color: var(--violet);border: 1px solid rgba(139,92,246,0.25); }
+
+/* ──────────────────────────────────────────────
+   LIVE DASHBOARD PREVIEW
+────────────────────────────────────────────── */
+#dashboard {
+  background: linear-gradient(180deg, var(--bg-void), var(--bg-deep));
+  position: relative;
+  overflow: hidden;
+}
+
+#dashboard::before {
+  content: '';
+  position: absolute;
+  width: 800px; height: 400px;
+  background: radial-gradient(ellipse, rgba(59,123,255,0.07) 0%, transparent 70%);
+  top: 50%; left: 50%; transform: translate(-50%,-50%);
+  pointer-events: none;
+}
+
+.dash-preview-wrap {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.dash-header-row {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.dash-preview {
+  background: rgba(10,17,38,0.95);
+  border: 1px solid rgba(0,212,255,0.12);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 60px 120px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.03);
+}
+
+.dash-topbar {
+  background: rgba(0,0,0,0.4);
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+
+.dash-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.dash-topbar-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  background: rgba(0,230,118,0.1);
+  border: 1px solid rgba(0,230,118,0.25);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--green);
+  letter-spacing: 0.1em;
+}
+
+.live-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: blink 1.2s ease-in-out infinite;
+}
+
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+
+.dash-main-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 0;
+}
+
+.dash-left {
+  padding: 20px;
+  border-right: 1px solid var(--border);
+}
+
+.dash-section-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+/* Regime timeline bar */
+.regime-timeline {
+  display: flex;
+  height: 28px;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  gap: 2px;
+}
+
+.rt-seg {
+  height: 100%;
+  border-radius: 4px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  overflow: hidden;
+  transition: flex 0.5s ease;
+}
+
+.rt-bull { background: rgba(0,230,118,0.25); color: var(--green);  flex: 3; }
+.rt-bear { background: rgba(255,61,87,0.25);  color: var(--red);   flex: 1.5; }
+.rt-side { background: rgba(255,179,0,0.25);  color: var(--amber); flex: 2; }
+.rt-vol  { background: rgba(139,92,246,0.25); color: var(--violet);flex: 1; }
+
+.timeline-labels {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+
+/* Main price chart */
+.price-chart-area {
+  position: relative;
+  height: 160px;
+  margin-bottom: 16px;
+}
+
+.price-chart-svg { width: 100%; height: 100%; }
+
+.chart-overlay-label {
+  position: absolute;
+  top: 8px; right: 8px;
+  background: rgba(0,0,0,0.6);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+.col-ticker { font-family: var(--font-display); font-size: 14px; font-weight: 700; color: var(--cyan); }
+.col-price  { font-family: var(--font-mono); font-size: 11px; color: var(--text-primary); }
+.col-chg    { font-family: var(--font-mono); font-size: 10px; color: var(--green); }
+
+/* Volatility bar */
+.vol-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.vol-label { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); width: 90px; flex-shrink: 0; }
+
+.vol-track {
+  flex: 1;
+  height: 5px;
+  border-radius: 99px;
+  background: rgba(255,255,255,0.06);
+  overflow: hidden;
+}
+
+.vol-fill {
+  height: 100%;
+  border-radius: 99px;
+}
+
+.vf-low   { background: linear-gradient(90deg, var(--green), rgba(0,230,118,0.5)); width: 28%; }
+.vf-med   { background: linear-gradient(90deg, var(--amber), rgba(255,179,0,0.5)); width: 55%; }
+.vf-high  { background: linear-gradient(90deg, var(--red), rgba(255,61,87,0.5));   width: 82%; }
+
+.vol-val  { font-family: var(--font-mono); font-size: 10px; width: 36px; text-align: right; }
+.vv-low   { color: var(--green); }
+.vv-med   { color: var(--amber); }
+.vv-high  { color: var(--red);   }
+
+/* Right panel */
+.dash-right { padding: 20px; }
+
+.regime-current {
+  background: rgba(0,230,118,0.05);
+  border: 1px solid rgba(0,230,118,0.2);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  margin-bottom: 14px;
+}
+
+.rc-label { font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 4px; }
+.rc-regime { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--green); }
+.rc-conf   { font-family: var(--font-mono); font-size: 10px; color: var(--text-secondary); margin-top: 3px; }
+
+.signal-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+
+.signal-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.si-name { font-size: 12px; color: var(--text-secondary); }
+.si-val  { font-family: var(--font-mono); font-size: 12px; font-weight: 600; }
+.si-up   { color: var(--green); }
+.si-down { color: var(--red);   }
+.si-neu  { color: var(--amber); }
+
+.posture-box {
+  background: linear-gradient(135deg, rgba(0,212,255,0.06), rgba(59,123,255,0.06));
+  border: 1px solid rgba(0,212,255,0.15);
+  border-radius: 12px;
+  padding: 14px;
+  text-align: center;
+}
+
+.pb-label  { font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 4px; }
+.pb-value  { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--cyan); }
+.pb-action { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+
+/* ──────────────────────────────────────────────
+   STRATEGY INSIGHTS
+────────────────────────────────────────────── */
+#strategy {
+  background: var(--bg-deep);
+}
+
+.strategy-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  align-items: start;
+}
+
+.strategy-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.strat-card {
+  padding: 22px 24px;
+  border-radius: 16px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  transition: all 0.3s;
+  cursor: default;
+}
+
+.strat-card:hover {
+  border-color: rgba(0,212,255,0.15);
+  background: rgba(0,212,255,0.03);
+  transform: translateX(4px);
+}
+
+.strat-icon {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.si-green  { background: rgba(0,230,118,0.1); }
+.si-red    { background: rgba(255,61,87,0.1);  }
+.si-amber  { background: rgba(255,179,0,0.1);  }
+.si-violet { background: rgba(139,92,246,0.1); }
+
+.strat-title { font-family: var(--font-display); font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+.strat-desc  { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+
+.strat-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  margin-top: 8px;
+  font-weight: 700;
+}
+
+.st-green  { background: rgba(0,230,118,0.1); color: var(--green); border: 1px solid rgba(0,230,118,0.2); }
+.st-red    { background: rgba(255,61,87,0.1);  color: var(--red);   border: 1px solid rgba(255,61,87,0.2);  }
+.st-amber  { background: rgba(255,179,0,0.1);  color: var(--amber); border: 1px solid rgba(255,179,0,0.2);  }
+.st-violet { background: rgba(139,92,246,0.1); color: var(--violet);border: 1px solid rgba(139,92,246,0.2); }
+
+/* Strategy right panel */
+.strat-right-panel {
+  position: sticky;
+  top: 80px;
+}
+
+.strat-header { margin-bottom: 28px; }
+
+.posture-matrix {
+  display: grid;
+  gap: 12px;
+}
+
+.pm-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.pm-regime {
+  width: 120px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.pm-bar-wrap { flex: 1; position: relative; height: 32px; }
+
+.pm-bar {
+  height: 100%;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.pm-bull { background: rgba(0,230,118,0.12); color: var(--green);  border: 1px solid rgba(0,230,118,0.2); width: 90%; }
+.pm-bear { background: rgba(255,61,87,0.12);  color: var(--red);   border: 1px solid rgba(255,61,87,0.2);  width: 85%; }
+.pm-side { background: rgba(255,179,0,0.12);  color: var(--amber); border: 1px solid rgba(255,179,0,0.2);  width: 75%; }
+.pm-vol  { background: rgba(139,92,246,0.12); color: var(--violet);border: 1px solid rgba(139,92,246,0.2); width: 70%; }
+
+/* ──────────────────────────────────────────────
+   DATASET & MODEL
+────────────────────────────────────────────── */
+#dataset {
+  background: var(--bg-void);
+  position: relative;
+  overflow: hidden;
+}
+
+#dataset::before {
+  content: '';
+  position: absolute;
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%);
+  right: -100px; top: 50%; transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.dataset-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: center;
+}
+
+.model-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.mp {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+}
+
+.mp-cyan   { background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.2); color: var(--cyan); }
+.mp-blue   { background: rgba(59,123,255,0.08); border: 1px solid rgba(59,123,255,0.2); color: var(--blue); }
+.mp-violet { background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.2); color: var(--violet); }
+.mp-green  { background: rgba(0,230,118,0.08); border: 1px solid rgba(0,230,118,0.2); color: var(--green); }
+
+.data-specs {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.data-spec {
+  padding: 20px 22px;
+  border-radius: 14px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.ds-num {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--cyan);
+  flex-shrink: 0;
+  width: 56px;
+}
+
+.ds-text {}
+.ds-title { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+.ds-desc  { font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; }
+
+/* ──────────────────────────────────────────────
+   INNOVATION
+────────────────────────────────────────────── */
+#innovation {
+  background: var(--bg-deep);
+}
+
+.innovation-header { text-align: center; margin-bottom: 60px; }
+
+.innov-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.innov-card {
+  padding: 30px 26px;
+  border-radius: 18px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  transition: all 0.35s;
+  position: relative;
+  overflow: hidden;
+}
+
+.innov-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0,212,255,0.3), transparent);
+}
+
+.innov-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(0,212,255,0.12);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.innov-icon { font-size: 32px; margin-bottom: 16px; }
+.innov-title { font-family: var(--font-display); font-size: 22px; font-weight: 700; margin-bottom: 10px; }
+.innov-desc  { font-size: 13.5px; color: var(--text-secondary); line-height: 1.65; }
+
+/* ──────────────────────────────────────────────
+   IMPACT
+────────────────────────────────────────────── */
+#impact {
+  background: var(--bg-void);
+  position: relative;
+  overflow: hidden;
+}
+
+#impact::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 50% at 50% 50%, rgba(0,212,255,0.04) 0%, transparent 100%);
+  pointer-events: none;
+}
+
+.impact-header { text-align: center; margin-bottom: 60px; }
+
+.impact-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-bottom: 60px;
+}
+
+.impact-stat {
+  text-align: center;
+  padding: 32px 20px;
+  border-radius: 18px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  transition: all 0.3s;
+}
+
+.impact-stat:hover { transform: translateY(-4px); border-color: rgba(0,212,255,0.1); }
+
+.is-num {
+  font-family: var(--font-display);
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 1;
+  background: linear-gradient(135deg, var(--cyan), var(--blue));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 8px;
+}
+
+.is-label { font-size: 13px; color: var(--text-secondary); }
+
+.impact-audience {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.audience-card {
+  padding: 28px;
+  border-radius: 16px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  text-align: center;
+}
+
+.aud-emoji { font-size: 32px; margin-bottom: 12px; }
+.aud-title { font-family: var(--font-display); font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+.aud-desc  { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+
+/* ──────────────────────────────────────────────
+   CTA BANNER
+────────────────────────────────────────────── */
+#cta-banner {
+  background: linear-gradient(135deg, rgba(0,212,255,0.06) 0%, rgba(139,92,246,0.06) 100%);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 80px 0;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+#cta-banner::before {
+  content: '';
+  position: absolute;
+  width: 600px; height: 300px;
+  background: radial-gradient(ellipse, rgba(0,212,255,0.08) 0%, transparent 70%);
+  top: 50%; left: 50%; transform: translate(-50%,-50%);
+  pointer-events: none;
+}
+
+.cta-title {
+  font-family: var(--font-display);
+  font-size: clamp(36px, 5vw, 60px);
+  font-weight: 700;
+  line-height: 1.1;
+  margin-bottom: 16px;
+}
+
+.cta-sub {
+  font-size: 17px;
+  color: var(--text-secondary);
+  margin-bottom: 36px;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.cta-buttons { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+
+/* ──────────────────────────────────────────────
+   FOOTER
+────────────────────────────────────────────── */
+footer {
+  background: var(--bg-void);
+  border-top: 1px solid var(--border);
+  padding: 60px 0 32px;
+  position: relative;
+  z-index: 1;
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 40px;
+  margin-bottom: 48px;
+}
+
+.footer-brand .nav-logo { display: block; margin-bottom: 12px; }
+
+.footer-brand p {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.7;
+  max-width: 240px;
+}
+
+.footer-col h4 {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+.footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+
+.footer-col a {
+  font-size: 13px;
+  color: var(--text-muted);
+  transition: color 0.2s;
+}
+
+.footer-col a:hover { color: var(--cyan); }
+
+.footer-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 28px;
+  border-top: 1px solid var(--border);
+}
+
+.footer-copy { font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); }
+
+.footer-badges { display: flex; gap: 10px; }
+
+.fbadge {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+/* ──────────────────────────────────────────────
+   SCROLL ANIMATIONS
+────────────────────────────────────────────── */
+.fade-in {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.65s ease, transform 0.65s ease;
+}
+
+.fade-in.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.stagger > * {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.stagger.visible > * { opacity: 1; transform: translateY(0); }
+.stagger.visible > *:nth-child(1) { transition-delay: 0.0s; }
+.stagger.visible > *:nth-child(2) { transition-delay: 0.1s; }
+.stagger.visible > *:nth-child(3) { transition-delay: 0.2s; }
+.stagger.visible > *:nth-child(4) { transition-delay: 0.3s; }
+.stagger.visible > *:nth-child(5) { transition-delay: 0.4s; }
+.stagger.visible > *:nth-child(6) { transition-delay: 0.5s; }
+
+/* ──────────────────────────────────────────────
+   RESPONSIVE
+────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .hero-inner          { grid-template-columns: 1fr; }
+  .hero-visual         { display: none; }
+  .how-steps           { grid-template-columns: 1fr 1fr; }
+  .how-steps::before   { display: none; }
+  .regimes-grid        { grid-template-columns: 1fr 1fr; }
+  .dash-main-grid      { grid-template-columns: 1fr; }
+  .strategy-grid       { grid-template-columns: 1fr; }
+  .dataset-grid        { grid-template-columns: 1fr; }
+  .innov-grid          { grid-template-columns: 1fr 1fr; }
+  .impact-stats        { grid-template-columns: 1fr 1fr; }
+  .impact-audience     { grid-template-columns: 1fr; }
+  .footer-grid         { grid-template-columns: 1fr 1fr; }
+  .problem-grid        { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 600px) {
+  .nav-links  { display: none; }
+  .section    { padding: 70px 0; }
+  .how-steps  { grid-template-columns: 1fr; }
+  .regimes-grid   { grid-template-columns: 1fr; }
+  .innov-grid     { grid-template-columns: 1fr; }
+  .impact-stats   { grid-template-columns: 1fr 1fr; }
+  .footer-grid    { grid-template-columns: 1fr; }
+  .footer-bottom  { flex-direction: column; gap: 12px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ─── NAV ─────────────────────────────────── -->
+<nav>
+  <div class="nav-logo">MRDE<span>.</span></div>
+  <ul class="nav-links">
+    <li><a href="#problem">Problem</a></li>
+    <li><a href="#how">How It Works</a></li>
+    <li><a href="#regimes">Regimes</a></li>
+    <li><a href="#dashboard">Dashboard</a></li>
+    <li><a href="#dataset">Model</a></li>
+  </ul>
+  <a class="nav-cta" href="{{ url_for('dashboard') if session.get('user_id') else url_for('auth', mode='login') }}">Get Early Access</a>
+</nav>
+
+<!-- ─── HERO ─────────────────────────────────── -->
+<section id="hero">
+  <div class="container">
+    <div class="hero-inner">
+      <div class="hero-text">
+        <div class="hero-eyebrow">
+          <span class="dot"></span>
+          Real-Time Intelligence Engine
+        </div>
+        <h1>
+          <span class="h1-cyan">Know</span><br/>
+          <span class="h1-white">The Market's</span><br/>
+          <span class="h1-violet">True Regime</span>
+        </h1>
+        <p class="hero-sub">
+          The Market Regime Detection Engine identifies whether markets are trending, reversing, or consolidating — in real time. Stop reacting to price. Start positioning for what the market is actually doing.
+        </p>
+        <div class="hero-ctas">
+          <a class="btn-primary" href="{{ url_for('dashboard') if session.get('user_id') else url_for('auth', mode='login') }}">
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            Launch Dashboard
+          </a>
+          <a class="btn-ghost" href="#dataset">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5zm-9.5.5c0-.83.67-1.5 1.5-1.5h5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-5C5.67 12 5 11.33 5 10.5zm5 7c0 .83-.67 1.5-1.5 1.5S7 18.33 7 17.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5zm7.5-7.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5h5z"/></svg>
+            View Documentation
+          </a>
+        </div>
+        <div class="hero-stats">
+          <div class="hstat">
+            <div class="hstat-num">4</div>
+            <div class="hstat-label">Regime Types</div>
+          </div>
+          <div class="hstat">
+            <div class="hstat-num">Real-Time</div>
+            <div class="hstat-label">Classification</div>
+          </div>
+          <div class="hstat">
+            <div class="hstat-num">2</div>
+            <div class="hstat-label">ML Models</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-visual">
+        <!-- Floating badge -->
+        <div class="hero-badge">
+          <div class="badge-icon">🎯</div>
+          <div class="badge-text">
+            <div class="badge-label">Regime Detected</div>
+            <div class="badge-sub">BULL TREND — 94% confidence</div>
+          </div>
+        </div>
+
+        <!-- Dashboard mock -->
+        <div class="hero-dash">
+          <div class="dash-bar">
+            <div class="dash-dots">
+              <div class="dash-dot dd-red"></div>
+              <div class="dash-dot dd-amber"></div>
+              <div class="dash-dot dd-green"></div>
+            </div>
+            <div class="dash-tag">MRDE — LIVE VIEW</div>
+          </div>
+
+          <!-- Mini chart SVG -->
+          <div class="regime-chart-wrap">
+            <svg class="regime-chart-svg" viewBox="0 0 460 130" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="bull-grad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#00e676" stop-opacity="0.3"/>
+                  <stop offset="100%" stop-color="#00e676" stop-opacity="0.0"/>
+                </linearGradient>
+                <linearGradient id="bear-grad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#ff3d57" stop-opacity="0.25"/>
+                  <stop offset="100%" stop-color="#ff3d57" stop-opacity="0.0"/>
+                </linearGradient>
+                <linearGradient id="line-grad" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stop-color="#00e676"/>
+                  <stop offset="45%" stop-color="#00e676"/>
+                  <stop offset="46%" stop-color="#ff3d57"/>
+                  <stop offset="65%" stop-color="#ff3d57"/>
+                  <stop offset="66%" stop-color="#ffb300"/>
+                  <stop offset="100%" stop-color="#00d4ff"/>
+                </linearGradient>
+              </defs>
+              <!-- Regime coloured background bands -->
+              <rect x="0" y="0" width="207" height="130" fill="rgba(0,230,118,0.05)"/>
+              <rect x="207" y="0" width="90" height="130" fill="rgba(255,61,87,0.05)"/>
+              <rect x="297" y="0" width="80" height="130" fill="rgba(255,179,0,0.05)"/>
+              <rect x="377" y="0" width="83" height="130" fill="rgba(0,212,255,0.05)"/>
+              <!-- Price line -->
+              <polyline
+                points="0,100 30,88 55,78 80,64 110,55 140,48 170,40 200,36 207,42 230,58 255,72 270,80 285,76 297,70 310,65 320,68 337,63 360,58 377,50 400,38 430,26 460,18"
+                fill="none"
+                stroke="url(#line-grad)"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <!-- Gradient fill under line -->
+              <polygon
+                points="0,100 30,88 55,78 80,64 110,55 140,48 170,40 200,36 207,42 207,130 0,130"
+                fill="url(#bull-grad)"
+              />
+              <polygon
+                points="207,42 230,58 255,72 270,80 285,76 297,76 297,130 207,130"
+                fill="url(#bear-grad)"
+              />
+              <!-- Regime labels -->
+              <text x="104" y="118" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#00e676" opacity="0.8">BULL</text>
+              <text x="252" y="118" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#ff3d57" opacity="0.8">BEAR</text>
+              <text x="337" y="118" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#ffb300" opacity="0.8">SIDEWAYS</text>
+              <text x="418" y="118" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#00d4ff" opacity="0.8">TRENDING</text>
+            </svg>
+          </div>
+
+          <!-- Regime chips -->
+          <div class="regime-row">
+            <div class="regime-chip rc-bull"><div class="rc-name">Bull</div><div class="rc-val">38%</div></div>
+            <div class="regime-chip rc-bear"><div class="rc-name">Bear</div><div class="rc-val">21%</div></div>
+            <div class="regime-chip rc-side"><div class="rc-name">Sideways</div><div class="rc-val">25%</div></div>
+            <div class="regime-chip rc-vol"><div class="rc-name">High-Vol</div><div class="rc-val">16%</div></div>
+          </div>
+
+          <!-- Bottom metrics -->
+          <div class="dash-metrics">
+            <div class="dash-metric">
+              <div class="dm-label">VIX</div>
+              <div class="dm-val down">18.4</div>
+            </div>
+            <div class="dash-metric">
+              <div class="dm-label">Trend</div>
+              <div class="dm-val up">↑ Strong</div>
+            </div>
+            <div class="dash-metric">
+              <div class="dm-label">Posture</div>
+              <div class="dm-val" style="color:var(--cyan);">Risk-On</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── TICKER STRIP ─────────────────────────── -->
+<div class="ticker-strip">
+  <div class="ticker-track">
+    <div class="ticker-item"><span class="ti-sym">SPY</span><span class="ti-up">▲ +1.24%</span><span class="ti-dot">·</span><span>540.82</span></div>
+    <div class="ticker-item"><span class="ti-sym">QQQ</span><span class="ti-up">▲ +1.83%</span><span class="ti-dot">·</span><span>455.31</span></div>
+    <div class="ticker-item"><span class="ti-sym">AAPL</span><span class="ti-up">▲ +0.92%</span><span class="ti-dot">·</span><span>189.44</span></div>
+    <div class="ticker-item"><span class="ti-sym">TSLA</span><span class="ti-down">▼ -2.41%</span><span class="ti-dot">·</span><span>201.56</span></div>
+    <div class="ticker-item"><span class="ti-sym">GLD</span><span class="ti-up">▲ +0.44%</span><span class="ti-dot">·</span><span>218.90</span></div>
+    <div class="ticker-item"><span class="ti-sym">BTC-USD</span><span class="ti-up">▲ +3.10%</span><span class="ti-dot">·</span><span>71,240</span></div>
+    <div class="ticker-item"><span class="ti-sym">VIX</span><span class="ti-down">▼ -4.2%</span><span class="ti-dot">·</span><span>18.4</span></div>
+    <div class="ticker-item"><span class="ti-sym">TLT</span><span class="ti-up">▲ +0.33%</span><span class="ti-dot">·</span><span>96.12</span></div>
+    <div class="ticker-item"><span class="ti-sym">MSFT</span><span class="ti-up">▲ +1.07%</span><span class="ti-dot">·</span><span>412.88</span></div>
+    <div class="ticker-item"><span class="ti-sym">NVDA</span><span class="ti-up">▲ +2.66%</span><span class="ti-dot">·</span><span>880.60</span></div>
+    <!-- Duplicate for seamless loop -->
+    <div class="ticker-item"><span class="ti-sym">SPY</span><span class="ti-up">▲ +1.24%</span><span class="ti-dot">·</span><span>540.82</span></div>
+    <div class="ticker-item"><span class="ti-sym">QQQ</span><span class="ti-up">▲ +1.83%</span><span class="ti-dot">·</span><span>455.31</span></div>
+    <div class="ticker-item"><span class="ti-sym">AAPL</span><span class="ti-up">▲ +0.92%</span><span class="ti-dot">·</span><span>189.44</span></div>
+    <div class="ticker-item"><span class="ti-sym">TSLA</span><span class="ti-down">▼ -2.41%</span><span class="ti-dot">·</span><span>201.56</span></div>
+    <div class="ticker-item"><span class="ti-sym">GLD</span><span class="ti-up">▲ +0.44%</span><span class="ti-dot">·</span><span>218.90</span></div>
+    <div class="ticker-item"><span class="ti-sym">BTC-USD</span><span class="ti-up">▲ +3.10%</span><span class="ti-dot">·</span><span>71,240</span></div>
+    <div class="ticker-item"><span class="ti-sym">VIX</span><span class="ti-down">▼ -4.2%</span><span class="ti-dot">·</span><span>18.4</span></div>
+    <div class="ticker-item"><span class="ti-sym">TLT</span><span class="ti-up">▲ +0.33%</span><span class="ti-dot">·</span><span>96.12</span></div>
+    <div class="ticker-item"><span class="ti-sym">MSFT</span><span class="ti-up">▲ +1.07%</span><span class="ti-dot">·</span><span>412.88</span></div>
+    <div class="ticker-item"><span class="ti-sym">NVDA</span><span class="ti-up">▲ +2.66%</span><span class="ti-dot">·</span><span>880.60</span></div>
+  </div>
+</div>
+
+<!-- ─── PROBLEM ───────────────────────────────── -->
+<section id="problem" class="section">
+  <div class="container">
+    <div class="problem-grid">
+      <div class="fade-in">
+        <div class="label">The Problem</div>
+        <h2 class="section-title">Markets Don't Stay the Same — But Most Tools Do</h2>
+        <p class="section-sub" style="margin-bottom:24px;">
+          A strategy built for a bull market destroys capital in a bear market. A momentum trade in a sideways market bleeds you dry on fees. Most platforms show you price — but not what the market is actually doing.
+        </p>
+        <p class="section-sub">
+          MRDE solves this by continuously classifying the underlying market regime, so your strategy posture matches the environment — not just your hopes.
+        </p>
+      </div>
+      <div class="problem-cards stagger">
+        <div class="prob-card pc-bull">
+          <div class="pc-icon">📈</div>
+          <div class="pc-title">Bull Regime</div>
+          <div class="pc-desc">Sustained uptrend with compressing volatility. Trend-following and momentum strategies perform best here.</div>
+        </div>
+        <div class="prob-card pc-bear">
+          <div class="pc-icon">📉</div>
+          <div class="pc-title">Bear Regime</div>
+          <div class="pc-desc">Downtrend driven by macro stress or sector rotation. Capital preservation and short exposure take priority.</div>
+        </div>
+        <div class="prob-card pc-side">
+          <div class="pc-icon">➡️</div>
+          <div class="pc-title">Sideways Regime</div>
+          <div class="pc-desc">No directional edge. Mean-reversion, range trading, and options theta strategies thrive in range-bound markets.</div>
+        </div>
+        <div class="prob-card pc-vol">
+          <div class="pc-icon">⚡</div>
+          <div class="pc-title">High-Volatility Regime</div>
+          <div class="pc-desc">Explosive, unpredictable moves. Oversized positions become liabilities. Hedging and sizing discipline are critical.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── HOW IT WORKS ──────────────────────────── -->
+<section id="how" class="section">
+  <div class="container">
+    <div class="how-header fade-in">
+      <div class="label">The Engine</div>
+      <h2 class="section-title">Four Layers. One Verdict.</h2>
+      <p class="section-sub">Every regime call is the result of a clean, fast pipeline — from raw market data to actionable posture recommendation.</p>
+    </div>
+    <div class="how-steps stagger">
+      <div class="how-step">
+        <div class="step-orb so-1">📡</div>
+        <div class="step-num">STEP 01</div>
+        <div class="step-title">Market Data Ingestion</div>
+        <div class="step-desc">Live and historical price feeds are pulled across equities, ETFs, and indices. Clean, normalised, and ready.</div>
+        <div class="step-tags">
+          <span class="step-tag">yfinance</span>
+          <span class="step-tag">OHLCV</span>
+          <span class="step-tag">multi-asset</span>
+        </div>
+      </div>
+      <div class="how-step">
+        <div class="step-orb so-2">🔬</div>
+        <div class="step-num">STEP 02</div>
+        <div class="step-title">Feature Engineering</div>
+        <div class="step-desc">Log returns, rolling volatility, trend strength indicators, and momentum signals are computed to build a rich feature matrix.</div>
+        <div class="step-tags">
+          <span class="step-tag" style="border-color:rgba(59,123,255,0.3);color:var(--blue);background:rgba(59,123,255,0.07);">returns</span>
+          <span class="step-tag" style="border-color:rgba(59,123,255,0.3);color:var(--blue);background:rgba(59,123,255,0.07);">volatility</span>
+        </div>
+      </div>
+      <div class="how-step">
+        <div class="step-orb so-3">🧠</div>
+        <div class="step-num">STEP 03</div>
+        <div class="step-title">Regime Classification</div>
+        <div class="step-desc">Two complementary models — K-Means for hard clusters and Hidden Markov Models for probabilistic state transitions — classify the current regime together.</div>
+        <div class="step-tags">
+          <span class="step-tag" style="border-color:rgba(139,92,246,0.3);color:var(--violet);background:rgba(139,92,246,0.07);">K-Means</span>
+          <span class="step-tag" style="border-color:rgba(139,92,246,0.3);color:var(--violet);background:rgba(139,92,246,0.07);">HMM</span>
+        </div>
+      </div>
+      <div class="how-step">
+        <div class="step-orb so-4">📊</div>
+        <div class="step-num">STEP 04</div>
+        <div class="step-title">Dashboard & Signals</div>
+        <div class="step-desc">Results surface as live regime labels, confidence scores, volatility readings, and strategy posture — all in a single, clean interface.</div>
+        <div class="step-tags">
+          <span class="step-tag" style="border-color:rgba(0,230,118,0.3);color:var(--green);background:rgba(0,230,118,0.07);">live signals</span>
+          <span class="step-tag" style="border-color:rgba(0,230,118,0.3);color:var(--green);background:rgba(0,230,118,0.07);">posture</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── REGIME TYPES ───────────────────────────── -->
+<section id="regimes" class="section">
+  <div class="container">
+    <div class="regimes-header fade-in">
+      <div class="label">Regime Taxonomy</div>
+      <h2 class="section-title">Four States. One Market.</h2>
+      <p class="section-sub">Every market environment fits into one of four regimes. MRDE tells you which one you're in — and what to do about it.</p>
+    </div>
+    <div class="regimes-grid stagger">
+      <div class="regime-card rg-bull">
+        <div class="rg-emoji">📈</div>
+        <div class="rg-title">Bull Trend</div>
+        <div class="rg-sub">Momentum · Expansion</div>
+        <div class="rg-desc">Prices make consistent higher highs. Volatility stays compressed. Institutional buyers dominate. Trend-following strategies carry positive expected value.</div>
+        <div class="rg-posture">🟢 Risk-On</div>
+      </div>
+      <div class="regime-card rg-bear">
+        <div class="rg-emoji">📉</div>
+        <div class="rg-title">Bear Trend</div>
+        <div class="rg-sub">Contraction · Stress</div>
+        <div class="rg-desc">Sustained selling pressure with elevated fear metrics. Defensive allocations, cash preservation, and short hedges become the priority positioning.</div>
+        <div class="rg-posture">🔴 Defensive</div>
+      </div>
+      <div class="regime-card rg-side">
+        <div class="rg-emoji">↔️</div>
+        <div class="rg-title">Sideways</div>
+        <div class="rg-sub">Consolidation · Chop</div>
+        <div class="rg-desc">No clear directional bias. Price oscillates between support and resistance. Mean-reversion edges appear. Trend strategies underperform and churn capital.</div>
+        <div class="rg-posture">🟡 Neutral</div>
+      </div>
+      <div class="regime-card rg-vol">
+        <div class="rg-emoji">⚡</div>
+        <div class="rg-title">High Volatility</div>
+        <div class="rg-sub">Chaos · Dislocation</div>
+        <div class="rg-desc">Regime breaks and macro shocks produce outsized intraday swings. Models detect volatility spikes before they peak, triggering risk reduction alerts.</div>
+        <div class="rg-posture">🟣 Reduce Risk</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── LIVE DASHBOARD ─────────────────────────── -->
+<section id="dashboard" class="section">
+  <div class="container">
+    <div class="dash-header-row fade-in">
+      <div class="label">Dashboard Preview</div>
+      <h2 class="section-title">The Control Room for Your Portfolio</h2>
+      <p class="section-sub" style="margin:0 auto;">One screen tells you everything — the current regime, volatility state, key signals, and your recommended posture. No noise. No guessing.</p>
+    </div>
+    <div class="dash-preview-wrap fade-in">
+      <div class="dash-preview">
+        <div class="dash-topbar">
+          <div class="dash-topbar-left">
+            <div class="dash-dots">
+              <div class="dash-dot dd-red"></div>
+              <div class="dash-dot dd-amber"></div>
+              <div class="dash-dot dd-green"></div>
+            </div>
+            <div class="dash-topbar-title">MARKET REGIME DETECTION ENGINE — MAIN VIEW</div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:center;">
+            <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+            <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);">Updated 2s ago</div>
+          </div>
+        </div>
+
+        <div class="dash-main-grid">
+          <!-- Left: chart area -->
+          <div class="dash-left">
+            <div class="dash-section-label">REGIME TIMELINE — LAST 12 MONTHS</div>
+            <div class="regime-timeline">
+              <div class="rt-seg rt-bull">BULL</div>
+              <div class="rt-seg rt-vol" style="flex:0.6">VOL</div>
+              <div class="rt-seg rt-bear">BEAR</div>
+              <div class="rt-seg rt-side">SIDEWAYS</div>
+              <div class="rt-seg rt-bull" style="flex:2">BULL</div>
+            </div>
+            <div class="timeline-labels">
+              <span>May '23</span><span>Aug '23</span><span>Nov '23</span><span>Feb '24</span><span>Now</span>
+            </div>
+
+            <div class="dash-section-label">SPY — PRICE + REGIME OVERLAY</div>
+            <div class="price-chart-area">
+              <svg class="price-chart-svg" viewBox="0 0 580 160" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="price-fill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#00d4ff" stop-opacity="0.2"/>
+                    <stop offset="100%" stop-color="#00d4ff" stop-opacity="0.0"/>
+                  </linearGradient>
+                </defs>
+                <!-- Grid lines -->
+                <line x1="0" y1="40" x2="580" y2="40" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+                <line x1="0" y1="80" x2="580" y2="80" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+                <line x1="0" y1="120" x2="580" y2="120" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+                <!-- Price line -->
+                <polyline
+                  points="0,140 30,128 60,115 90,105 115,95 140,82 170,74 200,65 225,56 250,70 270,85 290,96 310,88 330,75 355,62 380,50 410,38 440,28 470,20 510,14 550,8 580,5"
+                  fill="none"
+                  stroke="var(--cyan)"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <polygon
+                  points="0,140 30,128 60,115 90,105 115,95 140,82 170,74 200,65 225,56 250,70 270,85 290,96 310,88 330,75 355,62 380,50 410,38 440,28 470,20 510,14 550,8 580,5 580,160 0,160"
+                  fill="url(#price-fill)"
+                />
+                <!-- Y-axis labels -->
+                <text x="4" y="44"  font-family="JetBrains Mono" font-size="9" fill="rgba(139,163,197,0.5)">510</text>
+                <text x="4" y="84"  font-family="JetBrains Mono" font-size="9" fill="rgba(139,163,197,0.5)">480</text>
+                <text x="4" y="124" font-family="JetBrains Mono" font-size="9" fill="rgba(139,163,197,0.5)">440</text>
+              </svg>
+              <div class="chart-overlay-label">
+                <div class="col-ticker">SPY</div>
+                <div class="col-price">540.82</div>
+                <div class="col-chg">▲ +22.4%</div>
+              </div>
+            </div>
+
+            <div class="dash-section-label">VOLATILITY PROFILE</div>
+            <div class="vol-bar-row">
+              <div class="vol-label">Realised Vol</div>
+              <div class="vol-track"><div class="vol-fill vf-low"></div></div>
+              <div class="vol-val vv-low">12.3%</div>
+            </div>
+            <div class="vol-bar-row">
+              <div class="vol-label">Implied Vol</div>
+              <div class="vol-track"><div class="vol-fill vf-med"></div></div>
+              <div class="vol-val vv-med">18.4%</div>
+            </div>
+            <div class="vol-bar-row">
+              <div class="vol-label">Vol-of-Vol</div>
+              <div class="vol-track"><div class="vol-fill" style="background:rgba(139,92,246,0.6);width:38%;"></div></div>
+              <div class="vol-val" style="color:var(--violet);">6.8%</div>
+            </div>
+          </div>
+
+          <!-- Right: signals -->
+          <div class="dash-right">
+            <div class="dash-section-label">CURRENT REGIME</div>
+            <div class="regime-current">
+              <div class="rc-label">Active State</div>
+              <div class="rc-regime">Bull Trend</div>
+              <div class="rc-conf">94.2% confidence · HMM + KMeans</div>
+            </div>
+
+            <div class="dash-section-label">SIGNAL PANEL</div>
+            <div class="signal-list">
+              <div class="signal-item">
+                <span class="si-name">Trend Strength</span>
+                <span class="si-val si-up">Strong ↑</span>
+              </div>
+              <div class="signal-item">
+                <span class="si-name">Momentum</span>
+                <span class="si-val si-up">+0.84</span>
+              </div>
+              <div class="signal-item">
+                <span class="si-name">Vol Regime</span>
+                <span class="si-val si-neu">Low-Med</span>
+              </div>
+              <div class="signal-item">
+                <span class="si-name">Breadth</span>
+                <span class="si-val si-up">Expanding</span>
+              </div>
+              <div class="signal-item">
+                <span class="si-name">Risk Parity</span>
+                <span class="si-val si-up">Favourable</span>
+              </div>
+              <div class="signal-item">
+                <span class="si-name">Regime Stability</span>
+                <span class="si-val si-up">High</span>
+              </div>
+            </div>
+
+            <div class="posture-box">
+              <div class="pb-label">Recommended Posture</div>
+              <div class="pb-value">RISK-ON</div>
+              <div class="pb-action">Increase equity exposure · Reduce hedges</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── STRATEGY INSIGHTS ─────────────────────── -->
+<section id="strategy" class="section">
+  <div class="container">
+    <div class="strategy-grid">
+      <div>
+        <div class="strat-header fade-in">
+          <div class="label">Strategy Posture</div>
+          <h2 class="section-title">Decisions That Match the Environment</h2>
+          <p class="section-sub">MRDE doesn't just label the regime — it tells you exactly what your next move should look like.</p>
+        </div>
+        <div class="strategy-cards stagger">
+          <div class="strat-card">
+            <div class="strat-icon si-green">🚀</div>
+            <div>
+              <div class="strat-title">Risk-On — Bull Trend</div>
+              <div class="strat-desc">Increase equity allocation, ride momentum, reduce hedging costs. This is the environment where long-biased strategies earn their returns.</div>
+              <div class="strat-tag st-green">↑ Increase Exposure</div>
+            </div>
+          </div>
+          <div class="strat-card">
+            <div class="strat-icon si-red">🛡️</div>
+            <div>
+              <div class="strat-title">Defensive — Bear Trend</div>
+              <div class="strat-desc">Rotate into cash, bonds, or inverse positions. Reduce beta exposure. Capital preservation becomes the primary objective — not growth.</div>
+              <div class="strat-tag st-red">↓ Reduce Risk</div>
+            </div>
+          </div>
+          <div class="strat-card">
+            <div class="strat-icon si-amber">⚖️</div>
+            <div>
+              <div class="strat-title">Neutral — Sideways Range</div>
+              <div class="strat-desc">Neither momentum nor shorting edges fire cleanly here. Deploy mean-reversion, options income, or wait for the next directional break.</div>
+              <div class="strat-tag st-amber">→ Hold Neutral</div>
+            </div>
+          </div>
+          <div class="strat-card">
+            <div class="strat-icon si-violet">⚡</div>
+            <div>
+              <div class="strat-title">Protect — High Volatility</div>
+              <div class="strat-desc">Cut position sizes, widen stops, layer in tail risk hedges. High-vol regimes punish oversized bets regardless of direction.</div>
+              <div class="strat-tag st-violet">⚡ Hedge Tails</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="strat-right-panel fade-in">
+        <div class="label">Posture Matrix</div>
+        <h3 style="font-family:var(--font-display);font-size:28px;font-weight:700;margin-bottom:28px;">Regime → Action</h3>
+        <div class="posture-matrix">
+          <div class="pm-row">
+            <div class="pm-regime">📈 Bull Trend</div>
+            <div class="pm-bar-wrap"><div class="pm-bar pm-bull">RISK-ON</div></div>
+          </div>
+          <div class="pm-row">
+            <div class="pm-regime">📉 Bear Trend</div>
+            <div class="pm-bar-wrap"><div class="pm-bar pm-bear">DEFENSIVE</div></div>
+          </div>
+          <div class="pm-row">
+            <div class="pm-regime">↔️ Sideways</div>
+            <div class="pm-bar-wrap"><div class="pm-bar pm-side">NEUTRAL</div></div>
+          </div>
+          <div class="pm-row">
+            <div class="pm-regime">⚡ High-Vol</div>
+            <div class="pm-bar-wrap"><div class="pm-bar pm-vol">PROTECT</div></div>
+          </div>
+        </div>
+
+        <div style="margin-top:36px;padding:24px;background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:16px;backdrop-filter:blur(16px);">
+          <div class="label" style="margin-bottom:10px;">Why It Matters</div>
+          <p style="font-size:13.5px;color:var(--text-secondary);line-height:1.7;">The same signal that generates alpha in a bull market loses money in a bear market. MRDE ensures your strategy knows which game it's playing — not just what price is doing right now.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── DATASET & MODEL ────────────────────────── -->
+<section id="dataset" class="section">
+  <div class="container">
+    <div class="dataset-grid">
+      <div class="fade-in">
+        <div class="label">Under the Hood</div>
+        <h2 class="section-title">Rigorous Data. Production-Grade Models.</h2>
+        <p class="section-sub" style="margin-bottom:20px;">
+          MRDE is built on a principled data pipeline and a dual-model architecture that combines unsupervised clustering with probabilistic state modelling.
+        </p>
+        <p style="font-size:14px;color:var(--text-secondary);line-height:1.75;margin-bottom:28px;">
+          Market data is ingested from multiple asset classes via <strong style="color:var(--cyan);">yfinance</strong>, covering equities, ETFs, and indices. Features are derived from <strong style="color:var(--cyan);">log returns</strong>, <strong style="color:var(--cyan);">rolling volatility</strong>, trend signals, and cross-asset spreads.
+        </p>
+        <p style="font-size:14px;color:var(--text-secondary);line-height:1.75;margin-bottom:28px;">
+          Regime classification runs through two complementary models: <strong style="color:var(--violet);">K-Means clustering</strong> provides fast, hard-boundary regime labels calibrated on historical distributions. <strong style="color:var(--violet);">Hidden Markov Models (HMM)</strong> layer in temporal state transitions — modelling regime persistence, switching probabilities, and forward-looking confidence scores.
+        </p>
+        <div class="model-pills">
+          <span class="mp mp-cyan">yfinance</span>
+          <span class="mp mp-cyan">OHLCV Data</span>
+          <span class="mp mp-blue">Log Returns</span>
+          <span class="mp mp-blue">Rolling Volatility</span>
+          <span class="mp mp-violet">K-Means Clustering</span>
+          <span class="mp mp-violet">Hidden Markov Models</span>
+          <span class="mp mp-green">Regime Labelling</span>
+          <span class="mp mp-green">Confidence Scoring</span>
+        </div>
+      </div>
+
+      <div class="data-specs stagger">
+        <div class="data-spec">
+          <div class="ds-num">10+</div>
+          <div class="ds-text">
+            <div class="ds-title">Years of Training Data</div>
+            <div class="ds-desc">Historical price data spanning multiple full market cycles — bull, bear, consolidation, and crash — giving the model real-world robustness.</div>
+          </div>
+        </div>
+        <div class="data-spec">
+          <div class="ds-num" style="color:var(--violet);">2</div>
+          <div class="ds-text">
+            <div class="ds-title">Model Architectures</div>
+            <div class="ds-desc">K-Means for hard cluster assignments. Hidden Markov Models for probabilistic regime state transitions and persistence scoring.</div>
+          </div>
+        </div>
+        <div class="data-spec">
+          <div class="ds-num" style="color:var(--blue);">4</div>
+          <div class="ds-text">
+            <div class="ds-title">Regime States</div>
+            <div class="ds-desc">Bull, Bear, Sideways, and High-Volatility — each with distinct return distributions, volatility profiles, and strategy implications.</div>
+          </div>
+        </div>
+        <div class="data-spec">
+          <div class="ds-num" style="color:var(--green);">Real</div>
+          <div class="ds-text">
+            <div class="ds-title">Time Inference</div>
+            <div class="ds-desc">Regime classifications update continuously as new price data is ingested. No batch delays, no stale labels.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── INNOVATION ─────────────────────────────── -->
+<section id="innovation" class="section">
+  <div class="container">
+    <div class="innovation-header fade-in">
+      <div class="label">What's Different</div>
+      <h2 class="section-title">Built for Practitioners, Not Academics</h2>
+      <p class="section-sub" style="margin:0 auto;">Every design decision in MRDE was made with one question: does this help a trader or portfolio manager make a better decision right now?</p>
+    </div>
+    <div class="innov-grid stagger">
+      <div class="innov-card">
+        <div class="innov-icon">🔀</div>
+        <div class="innov-title">Dual-Model Fusion</div>
+        <div class="innov-desc">K-Means delivers fast, interpretable cluster boundaries. HMM adds temporal memory and transition probability — together, they outperform either model alone.</div>
+      </div>
+      <div class="innov-card">
+        <div class="innov-icon">📡</div>
+        <div class="innov-title">Real-Time Classification</div>
+        <div class="innov-desc">Regimes are classified as data arrives — no end-of-day batch. When volatility spikes, the engine responds in seconds, not hours.</div>
+      </div>
+      <div class="innov-card">
+        <div class="innov-icon">🎯</div>
+        <div class="innov-title">Confidence Scoring</div>
+        <div class="innov-desc">Every regime label ships with a model confidence score. You know not just what the regime is, but how certain the engine is — critical for position sizing decisions.</div>
+      </div>
+      <div class="innov-card">
+        <div class="innov-icon">🗂️</div>
+        <div class="innov-title">Regime History Tracking</div>
+        <div class="innov-desc">The full regime timeline is stored and visualised. Backtest your strategy against historically labelled regimes, not just raw price data.</div>
+      </div>
+      <div class="innov-card">
+        <div class="innov-icon">🧩</div>
+        <div class="innov-title">Strategy Posture Engine</div>
+        <div class="innov-desc">Regime labels are automatically mapped to actionable postures — Risk-On, Neutral, Defensive, and Protect — updated every time the regime changes.</div>
+      </div>
+      <div class="innov-card">
+        <div class="innov-icon">📊</div>
+        <div class="innov-title">Interactive Visualisation</div>
+        <div class="innov-desc">Regime overlays on price charts, volatility breakdowns, and transition matrices — all in a single interactive dashboard designed for speed and clarity.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── IMPACT ─────────────────────────────────── -->
+<section id="impact" class="section">
+  <div class="container">
+    <div class="impact-header fade-in">
+      <div class="label">Impact</div>
+      <h2 class="section-title">Why Regime Awareness Changes Everything</h2>
+      <p class="section-sub" style="margin:0 auto;">Research consistently shows that regime-aware strategies outperform static allocations — not by taking more risk, but by avoiding the wrong risk at the wrong time.</p>
+    </div>
+    <div class="impact-stats stagger">
+      <div class="impact-stat">
+        <div class="is-num">4×</div>
+        <div class="is-label">Fewer drawdown events when strategy posture matches market regime</div>
+      </div>
+      <div class="impact-stat">
+        <div class="is-num">94%</div>
+        <div class="is-label">Peak model classification confidence in trending market conditions</div>
+      </div>
+      <div class="impact-stat">
+        <div class="is-num">&lt;2s</div>
+        <div class="is-label">Regime re-classification latency after significant price events</div>
+      </div>
+      <div class="impact-stat">
+        <div class="is-num">10yr</div>
+        <div class="is-label">Historical data coverage including 2008, 2020, and 2022 regimes</div>
+      </div>
+    </div>
+    <div class="impact-audience stagger">
+      <div class="audience-card">
+        <div class="aud-emoji">📊</div>
+        <div class="aud-title">Traders</div>
+        <div class="aud-desc">Stop trading against the market grain. Know whether momentum, mean-reversion, or waiting is the correct edge for today's environment.</div>
+      </div>
+      <div class="audience-card">
+        <div class="aud-emoji">🏦</div>
+        <div class="aud-title">Portfolio Managers</div>
+        <div class="aud-desc">Dynamic allocation based on real-time regime classification. Reduce drawdown, improve Sharpe, and communicate regime context to stakeholders clearly.</div>
+      </div>
+      <div class="audience-card">
+        <div class="aud-emoji">🔬</div>
+        <div class="aud-title">Researchers</div>
+        <div class="aud-desc">A rigorous, reproducible framework for regime-based strategy evaluation. Access to labelled historical regimes, model outputs, and transition matrices.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── CTA BANNER ─────────────────────────────── -->
+<section id="cta-banner">
+  <div class="container">
+    <div class="label">Get Started</div>
+    <h2 class="cta-title">
+      Always Know<br/>
+      <span style="background:linear-gradient(135deg,var(--cyan),var(--violet));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">What the Market Is Doing</span>
+    </h2>
+    <p class="cta-sub">Join traders, portfolio managers, and researchers using MRDE to trade the right strategy in the right regime.</p>
+    <div class="cta-buttons">
+      <a class="btn-primary" style="font-size:16px;padding:16px 36px;" href="{{ url_for('dashboard') if session.get('user_id') else url_for('auth', mode='register') }}">
+        <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        Launch MRDE Free
+      </a>
+      <a class="btn-ghost" style="font-size:16px;padding:16px 36px;" href="{{ url_for('auth', mode='register') }}">Schedule a Demo</a>
+    </div>
+  </div>
+</section>
+
+<!-- ─── FOOTER ─────────────────────────────────── -->
+<footer>
+  <div class="container">
+    <div class="footer-bottom">
+      <div class="footer-copy">© 2026 MRDE. Not financial advice.</div>
+      <div class="footer-badges">
+        <span class="fbadge">K-Means</span>
+        <span class="fbadge">HMM</span>
+        <span class="fbadge">yfinance</span>
+        <span class="fbadge">Real-Time</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Scroll animations
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+document.querySelectorAll('.fade-in, .stagger').forEach(el => observer.observe(el));
+
+// Animate regime timeline segments
+let dir = 1;
+setInterval(() => {
+  const segs = document.querySelectorAll('.rt-seg');
+  segs.forEach(s => {
+    const curr = parseFloat(s.style.flex) || 1;
+    s.style.transition = 'flex 1.5s ease';
+  });
+}, 6000);
+
+// Animated counter for stats (hero)
+document.querySelectorAll('.is-num').forEach(el => {
+  el.style.opacity = '0';
+  el.style.transform = 'translateY(12px)';
+  el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+});
+
+const statsObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.querySelectorAll('.is-num').forEach((el, i) => {
+        setTimeout(() => {
+          el.style.opacity = '1';
+          el.style.transform = 'translateY(0)';
+        }, i * 120);
+      });
+    }
+  });
+}, { threshold: 0.3 });
+
+const impactStats = document.querySelector('.impact-stats');
+if (impactStats) statsObserver.observe(impactStats);
+
+// Nav scroll shadow
+window.addEventListener('scroll', () => {
+  const nav = document.querySelector('nav');
+  if (window.scrollY > 40) {
+    nav.style.background = 'rgba(3,8,18,0.92)';
+  } else {
+    nav.style.background = 'rgba(3,8,18,0.7)';
+  }
+});
+</script>
+</body>
+</html>

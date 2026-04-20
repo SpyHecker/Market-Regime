@@ -1,0 +1,160 @@
+{% extends "app_page.html" %}
+
+{% block page_content %}
+<style>
+.ml-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 20px; }
+.ml-stat { background: var(--panel); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px; }
+.ml-stat .lbl { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; font-family: var(--fm); }
+.ml-stat .val { font-size: 22px; font-weight: 700; font-family: var(--fh); }
+.ml-stat .sub { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+.ml-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+.ml-card { background: var(--panel); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 18px; }
+.ml-card h3 { font-family: var(--fh); font-size: 14px; font-weight: 700; margin: 0 0 12px; }
+.cluster-row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 12px; }
+.cluster-row:last-child { border-bottom: none; }
+.cluster-name { font-weight: 600; }
+.cluster-bar { height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+.cluster-bar > div { height: 100%; background: var(--cyan); }
+.feat-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 12px; }
+.feat-row:last-child { border-bottom: none; }
+.feat-bar { flex: 1; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; margin: 0 12px; overflow: hidden; }
+.feat-bar > div { height: 100%; background: linear-gradient(90deg, var(--violet), var(--cyan)); }
+.verdict-pill { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+.verdict-good { background: rgba(0,230,118,0.12); color: var(--green); }
+.verdict-mid { background: rgba(255,179,0,0.12); color: var(--amber); }
+.verdict-bad { background: rgba(239,68,68,0.12); color: var(--red); }
+.regime-chip { display: inline-flex; gap: 6px; align-items: center; padding: 4px 8px; border-radius: 6px; font-size: 11px; background: rgba(255,255,255,0.03); margin: 4px 6px 0 0; }
+.loading { color: var(--text-3); font-size: 12px; }
+.mono { font-family: var(--fm); }
+</style>
+
+<div class="card">
+  <h1 class="h1">ML Insights</h1>
+  <p class="p">Unsupervised K-Means cluster analytics for the live regime detector. No fake accuracy &mdash; all metrics are derived directly from the fitted model.</p>
+
+  <div id="ml-content">
+    <div class="loading">Loading ML data&hellip;</div>
+  </div>
+</div>
+
+<script>
+function verdictClass(score) {
+  if (score >= 0.35) return 'verdict-good';
+  if (score >= 0.15) return 'verdict-mid';
+  return 'verdict-bad';
+}
+
+async function loadMLData() {
+  try {
+    const res = await fetch('/api/ml_metrics');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const m = await res.json();
+
+    const sil = Number(m.silhouette_score || 0);
+    const maxImp = (m.top_features || []).reduce((a, f) => Math.max(a, f.importance), 1);
+    const totalPts = (m.per_cluster || []).reduce((a, c) => a + c.size, 0) || 1;
+
+    const html = `
+      <div class="ml-summary">
+        <div class="ml-stat">
+          <div class="lbl">Silhouette Score</div>
+          <div class="val" style="color: var(--cyan);">${sil.toFixed(3)}</div>
+          <div class="sub">Range -1 to 1; higher = tighter clusters</div>
+        </div>
+        <div class="ml-stat">
+          <div class="lbl">Davies-Bouldin</div>
+          <div class="val" style="color: var(--violet);">${Number(m.davies_bouldin).toFixed(3)}</div>
+          <div class="sub">Lower is better (cluster separation)</div>
+        </div>
+        <div class="ml-stat">
+          <div class="lbl">Inertia (WCSS)</div>
+          <div class="val">${Number(m.inertia).toLocaleString()}</div>
+          <div class="sub">K-Means objective &mdash; sum of sq. distances</div>
+        </div>
+        <div class="ml-stat">
+          <div class="lbl">Cluster Health</div>
+          <div class="val" style="color: var(--green);">${Number(m.cluster_health).toFixed(1)}%</div>
+          <div class="sub">Silhouette normalised to 0&ndash;100</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 18px;">
+        <span class="verdict-pill ${verdictClass(sil)}">${m.verdict}</span>
+        <span class="mono" style="font-size: 11px; color: var(--text-3); margin-left: 10px;">
+          ${m.algorithm} &middot; ${m.n_features} features &middot; ${Number(m.datapoints).toLocaleString()} data points &middot; mean centroid separation ${Number(m.mean_separation).toFixed(3)} &middot; drift ${Number(m.drift).toFixed(4)}
+        </span>
+      </div>
+
+      <div class="ml-grid">
+        <div class="ml-card">
+          <h3>Per-cluster density</h3>
+          ${(m.per_cluster || []).map(c => `
+            <div class="cluster-row">
+              <div>
+                <div class="cluster-name">${c.label}</div>
+                <div class="cluster-bar"><div style="width:${(c.size / totalPts * 100).toFixed(1)}%"></div></div>
+              </div>
+              <div class="mono" title="Points in cluster">${c.size}</div>
+              <div class="mono" title="Mean silhouette" style="color: var(--cyan);">s=${c.mean_silhouette.toFixed(3)}</div>
+              <div class="mono" title="Mean distance to centroid" style="color: var(--text-3);">d=${c.intra_dist.toFixed(2)}</div>
+            </div>
+          `).join('')}
+          <div style="font-size: 11px; color: var(--text-3); margin-top: 10px;">
+            Size = # of historical days assigned to the cluster. s = mean silhouette for the cluster (tightness). d = average distance of points to the centroid (spread).
+          </div>
+        </div>
+
+        <div class="ml-card">
+          <h3>Feature importance (centroid variance)</h3>
+          ${(m.top_features || []).map(f => `
+            <div class="feat-row">
+              <div style="min-width: 110px;">${f.name}</div>
+              <div class="feat-bar"><div style="width:${(f.importance / (maxImp || 1) * 100).toFixed(1)}%"></div></div>
+              <div class="mono" style="min-width: 52px; text-align: right;">${f.importance.toFixed(1)}%</div>
+            </div>
+          `).join('')}
+          <div style="font-size: 11px; color: var(--text-3); margin-top: 10px;">
+            Derived from variance of each feature across the 4 centroids. Higher = that feature moved the algorithm's cluster centers more.
+          </div>
+        </div>
+
+        <div class="ml-card">
+          <h3>Regime distribution (historical)</h3>
+          ${Object.entries(m.regime_distribution || {}).map(([regime, count]) => {
+            const pct = (count / (m.datapoints || 1) * 100).toFixed(1);
+            return `<div class="feat-row">
+              <div style="min-width: 90px;">${regime}</div>
+              <div class="feat-bar"><div style="width:${pct}%"></div></div>
+              <div class="mono" style="min-width: 86px; text-align: right;">${count} <span style="color: var(--text-3);">(${pct}%)</span></div>
+            </div>`;
+          }).join('')}
+          <div style="font-size: 11px; color: var(--text-3); margin-top: 10px;">
+            Imbalance ratio (largest / smallest cluster): <span class="mono">${m.imbalance}&times;</span>
+          </div>
+        </div>
+
+        <div class="ml-card">
+          <h3>Training info</h3>
+          <div class="feat-row"><div>Last fit</div><div class="mono">${m.training_info.timestamp}</div></div>
+          <div class="feat-row"><div>Data points</div><div class="mono">${Number(m.training_info.datapoints).toLocaleString()}</div></div>
+          <div class="feat-row"><div>Window</div><div class="mono">${m.training_info.window_years} years</div></div>
+          <div class="feat-row"><div>Mode</div><div class="mono">${m.training_info.mode}</div></div>
+          <div class="feat-row"><div>Feature set</div><div class="mono" style="font-size: 10px; text-align: right;">${m.feature_names.join(', ')}</div></div>
+          <div style="font-size: 11px; color: var(--text-3); margin-top: 10px;">
+            K-Means is unsupervised &mdash; there is no labelled ground truth, so traditional accuracy / confusion-matrix metrics do not apply.
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('ml-content').innerHTML = html;
+  } catch (e) {
+    console.error('Failed to load ML data:', e);
+    document.getElementById('ml-content').innerHTML =
+      '<div class="loading" style="color: var(--red);">Error loading ML data: ' + e.message + '</div>';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', loadMLData);
+</script>
+{% endblock %}

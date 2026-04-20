@@ -1,0 +1,361 @@
+{% extends "base.html" %}
+
+{% block title %}About - Market Regime Detector{% endblock %}
+
+{% block content %}
+<div class="about-container">
+    <!-- Header -->
+    <section class="section-header py-5" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <div class="container">
+            <h1 class="text-white fw-bold">About This Project</h1>
+            <p class="text-light">Multi-Regime Market Detection Engine</p>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <section class="py-5">
+        <div class="container">
+            <!-- Project Overview -->
+            <div class="row mb-5">
+                <div class="col-lg-8 mx-auto">
+                    <h2 class="mb-4">Project Overview</h2>
+                    <p class="lead">
+                        The Multi-Regime Market Detection Engine is an automated system that detects and classifies 
+                        financial market conditions in real-time, providing traders and investors with actionable insights 
+                        for better decision-making.
+                    </p>
+                    <p>
+                        Financial markets are inherently non-stationary and constantly shift between different regimes. 
+                        Manual detection of these shifts is slow, subjective, and often leads to delayed reactions and poor 
+                        trading decisions. Our system solves this problem by combining machine learning, data science, and 
+                        cloud technology to automatically detect market regimes and provide strategy recommendations.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Two Core Components -->
+            <div class="row mb-5">
+                <h2 class="mb-4">Our Approach: Two Core Components</h2>
+                <div class="col-lg-6 col-md-6 mb-4">
+                    <div class="component-card">
+                        <div class="component-icon">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <h5>Machine Learning Engine (DSBDA)</h5>
+                        <p>
+                            Analyzes market data using K-Means clustering to automatically detect and classify market regimes 
+                            (Bull, Bear, Sideways, Volatile) with dynamic confidence scores. Updates every 5 minutes with fresh data.
+                        </p>
+                        <ul class="small">
+                            <li><strong>Algorithm:</strong> K-Means Clustering (4 regimes)</li>
+                            <li><strong>Data Source:</strong> Yahoo Finance (yfinance) with synthetic fallback</li>
+                            <li><strong>Features:</strong> 7 engineered technical indicators (Log Returns, Volatility, RSI, MACD, Bollinger Bands, ATR)</li>
+                            <li><strong>Real-time Updates:</strong> APScheduler background job every 5 minutes</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-lg-6 col-md-6 mb-4">
+                    <div class="component-card">
+                        <div class="component-icon">
+                            <i class="fas fa-globe"></i>
+                        </div>
+                        <h5>Web Application (WAD)</h5>
+                        <p>
+                            Interactive, real-time dashboard displaying current market regime, confidence levels, and regime transitions. 
+                            Frontend continuously polls backend every 10 seconds for the latest regime classification.
+                        </p>
+                        <ul class="small">
+                            <li><strong>Frontend:</strong> HTML5, CSS3, Bootstrap 5, Vanilla JavaScript</li>
+                            <li><strong>Backend:</strong> Flask 2.3.3 REST API</li>
+                            <li><strong>Visualization:</strong> Chart.js 3.9.1 for interactive charts</li>
+                            <li><strong>Live Updates:</strong> 10-second polling interval with real-time data fetch</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Market Regimes -->
+            <div class="row mb-5">
+                <h2 class="mb-4">Understanding Market Regimes</h2>
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <div class="regime-detail-card regime-bull-detail">
+                        <h5>Bull Market</h5>
+                        <p>
+                            Characterized by rising prices and strong upward momentum. Markets trend higher with increased 
+                            investor confidence and buying pressure.
+                        </p>
+                        <div class="regime-characteristics">
+                            <p class="small"><strong>Characteristics:</strong></p>
+                            <ul class="small mb-0">
+                                <li>Rising price trends</li>
+                                <li>High confidence</li>
+                                <li>Strong volumes</li>
+                                <li>Lower volatility</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <div class="regime-detail-card regime-bear-detail">
+                        <h5>Bear Market</h5>
+                        <p>
+                            Characterized by falling prices and strong downward momentum. Markets trend lower with decreased 
+                            investor confidence and selling pressure.
+                        </p>
+                        <div class="regime-characteristics">
+                            <p class="small"><strong>Characteristics:</strong></p>
+                            <ul class="small mb-0">
+                                <li>Falling price trends</li>
+                                <li>Low sentiment</li>
+                                <li>Selling pressure</li>
+                                <li>Unpredictable moves</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <div class="regime-detail-card regime-sideways-detail">
+                        <h5>Sideways Market</h5>
+                        <p>
+                            Characterized by low momentum and range-bound movement. Prices consolidate between support and 
+                            resistance levels without clear directional bias.
+                        </p>
+                        <div class="regime-characteristics">
+                            <p class="small"><strong>Characteristics:</strong></p>
+                            <ul class="small mb-0">
+                                <li>Consolidation phase</li>
+                                <li>Low trend strength</li>
+                                <li>Mean reversion</li>
+                                <li>Predictable ranges</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <div class="regime-detail-card regime-volatile-detail">
+                        <h5>High Volatility</h5>
+                        <p>
+                            Characterized by extreme price swings and high uncertainty. Markets experience rapid, unpredictable 
+                            movements in both directions with increased risk.
+                        </p>
+                        <div class="regime-characteristics">
+                            <p class="small"><strong>Characteristics:</strong></p>
+                            <ul class="small mb-0">
+                                <li>Extreme moves</li>
+                                <li>Uncertainty</li>
+                                <li>Wide ranges</li>
+                                <li>High risk</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Technology Stack -->
+            <div class="row mb-5">
+                <h2 class="mb-4">Technology Stack</h2>
+                <div class="col-lg-6 mb-4">
+                    <div class="tech-box">
+                        <h5 class="mb-3"><i class="fas fa-laptop-code"></i> Frontend</h5>
+                        <ul class="tech-list">
+                            <li><span class="badge bg-info">HTML5</span> Semantic markup</li>
+                            <li><span class="badge bg-info">CSS3</span> Responsive styling</li>
+                            <li><span class="badge bg-warning text-dark">JavaScript</span> Interactive features</li>
+                            <li><span class="badge bg-primary">Bootstrap 5</span> UI Framework</li>
+                            <li><span class="badge bg-success">Chart.js</span> Data visualization</li>
+                            <li><span class="badge bg-secondary">Plotly.js</span> Advanced charts</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-lg-6 mb-4">
+                    <div class="tech-box">
+                        <h5 class="mb-3"><i class="fas fa-server"></i> Backend & Cloud</h5>
+                        <ul class="tech-list">
+                            <li><span class="badge bg-danger">Python</span> Core language</li>
+                            <li><span class="badge bg-primary">Flask</span> Web framework</li>
+                            <li><span class="badge bg-success">Pandas</span> Data processing</li>
+                            <li><span class="badge bg-info">scikit-learn</span> ML algorithms</li>
+                            <li><span class="badge bg-secondary">AWS</span> Cloud infrastructure</li>
+                            <li><span class="badge bg-dark">PostgreSQL</span> Database</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Team -->
+            <div class="row mb-5">
+                <h2 class="mb-4">Team Members</h2>
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <div class="team-card">
+                        <div class="team-avatar">
+                            <i class="fas fa-user-circle"></i>
+                        </div>
+                        <h5>Harshal Arjune</h5>
+                        <p class="text-muted">Data Science & Analytics</p>
+                        <p class="small">
+                            Focuses on machine learning models, data pipeline design, and regime classification algorithms.
+                        </p>
+                        <p class="small text-muted">Roll: 35004</p>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <div class="team-card">
+                        <div class="team-avatar">
+                            <i class="fas fa-user-circle"></i>
+                        </div>
+                        <h5>Yash Bharambe</h5>
+                        <p class="text-muted">Web Development & Cloud</p>
+                        <p class="small">
+                            Handles frontend/backend development, cloud architecture, and deployment on AWS infrastructure.
+                        </p>
+                        <p class="small text-muted">Roll: 35007</p>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <div class="team-card">
+                        <div class="team-avatar">
+                            <i class="fas fa-user-circle"></i>
+                        </div>
+                        <h5>Chhayashree Desai</h5>
+                        <p class="text-muted">Full-Stack & Integration</p>
+                        <p class="small">
+                            Manages system integration, API development, database design, and overall project coordination.
+                        </p>
+                        <p class="small text-muted">Roll: 35017</p>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <div class="team-card">
+                        <div class="team-avatar">
+                            <i class="fas fa-user-circle"></i>
+                        </div>
+                        <h5>Aarya Dharmadhikari</h5>
+                        <p class="text-muted">Backend & Testing</p>
+                        <p class="small">
+                            Focuses on backend optimization, system testing, quality assurance, and performance monitoring.
+                        </p>
+                        <p class="small text-muted">Roll: 35018</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Key Features -->
+            <div class="row mb-5">
+                <h2 class="mb-4">Key Features</h2>
+                <div class="col-md-6 mb-3">
+                    <div class="feature-item">
+                        <i class="fas fa-check-circle text-success"></i>
+                        <div>
+                            <h6>Real-time Market Detection</h6>
+                            <p class="small text-muted">Automatic detection of current market regime with high accuracy</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="feature-item">
+                        <i class="fas fa-check-circle text-success"></i>
+                        <div>
+                            <h6>Historical Analysis</h6>
+                            <p class="small text-muted">Deep dive into 10+ years of market data and regime patterns</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="feature-item">
+                        <i class="fas fa-check-circle text-success"></i>
+                        <div>
+                            <h6>Strategy Recommendations</h6>
+                            <p class="small text-muted">Tailored trading strategies based on detected market regimes</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="feature-item">
+                        <i class="fas fa-check-circle text-success"></i>
+                        <div>
+                            <h6>Interactive Dashboard</h6>
+                            <p class="small text-muted">Beautiful, responsive interface for easy data visualization</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="feature-item">
+                        <i class="fas fa-check-circle text-success"></i>
+                        <div>
+                            <h6>Volatility Tracking</h6>
+                            <p class="small text-muted">Monitor VIX and volatility metrics in real-time</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="feature-item">
+                        <i class="fas fa-check-circle text-success"></i>
+                        <div>
+                            <h6>Cloud Infrastructure</h6>
+                            <p class="small text-muted">Scalable, reliable, 24/7 available on AWS</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<style>
+    .component-card, .regime-detail-card, .tech-box, .team-card {
+        transition: all 0.3s ease;
+    }
+    
+    .component-card:hover, .team-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .component-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        color: #667eea;
+    }
+    
+    .tech-list {
+        list-style: none;
+        padding: 0;
+    }
+    
+    .tech-list li {
+        padding: 0.5rem 0;
+    }
+    
+    .team-avatar {
+        font-size: 4rem;
+        color: #667eea;
+        margin-bottom: 1rem;
+    }
+    
+    .regime-bull-detail {
+        border-left: 4px solid #28a745;
+    }
+    
+    .regime-bear-detail {
+        border-left: 4px solid #dc3545;
+    }
+    
+    .regime-sideways-detail {
+        border-left: 4px solid #ffc107;
+    }
+    
+    .regime-volatile-detail {
+        border-left: 4px solid #6c757d;
+    }
+    
+    .feature-item {
+        display: flex;
+        gap: 1rem;
+    }
+    
+    .feature-item i {
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+</style>
+
+{% endblock %}

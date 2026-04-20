@@ -1,0 +1,213 @@
+{% extends "app_page.html" %}
+
+
+
+{% block page_content %}
+
+
+<div class="analysis-container">
+    <div>
+        <h1 class="h1">Historical Analysis</h1>
+        <p class="p">Deep dive into market regime patterns and historical trends</p>
+    </div>
+
+    <!-- Filter Controls -->
+    <div class="card">
+        <div class="card-header"><i class="fas fa-filter"></i> Analysis Filters</div>
+        <div class="filter-grid">
+            <div class="form-group mb-0">
+                <label class="form-label">Date Range</label>
+                <select class="form-select" id="dateRange">
+                    <option value="1m">Last Month</option>
+                    <option value="3m">Last 3 Months</option>
+                    <option value="6m">Last 6 Months</option>
+                    <option value="1y">Last Year</option>
+                    <option value="5y" selected>Last 5 Years</option>
+                    <option value="10y">Last 10 Years</option>
+                </select>
+            </div>
+            <div class="form-group mb-0">
+                <label class="form-label">Regime Type</label>
+                <select class="form-select" id="regimeType">
+                    <option value="">All Regimes</option>
+                    <option value="bull">Bull Markets</option>
+                    <option value="bear">Bear Markets</option>
+                    <option value="sideways">Sideways Markets</option>
+                    <option value="volatile">High Volatility</option>
+                </select>
+            </div>
+            <div>
+                <button class="btn btn-primary" style="width:100%;">
+                    <i class="fas fa-search"></i> Analyze
+                </button>
+            </div>
+        </div>
+    </div>
+
+            <!-- Historical Regime Chart -->
+            <div class="grid-1 gap-20">
+                
+                    <div class="card">
+                        <div class="card-header bg-gradient text-white">
+                            <div><i class="fas fa-history"></i> Regime History Over Time</div>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="historyChart" height="80"></canvas>
+                        </div>
+                    </div>
+    </div>
+
+            <!-- Statistics Grid -->
+            <div class="grid-1 gap-20">
+                <h3 class="mb-4">Key Statistics</div>
+                <div class="col-md-6 col-lg-3 mb-4">
+                    <div class="stat-box">
+                        <div class="stat-value text-success">245 days</div>
+                        <div class="stat-label">Bull Market Duration</div>
+                        <small class="text-muted">45% of period</small>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3 mb-4">
+                    <div class="stat-box">
+                        <div class="stat-value text-danger">98 days</div>
+                        <div class="stat-label">Bear Market Duration</div>
+                        <small class="text-muted">18% of period</small>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3 mb-4">
+                    <div class="stat-box">
+                        <div class="stat-value text-warning">157 days</div>
+                        <div class="stat-label">Sideways Market</div>
+                        <small class="text-muted">29% of period</small>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3 mb-4">
+                    <div class="stat-box">
+                        <div class="stat-value text-secondary">45 days</div>
+                        <div class="stat-label">High Volatility</div>
+                        <small class="text-muted">8% of period</small>
+                    </div>
+    </div>
+
+            <!-- Correlation Analysis -->
+            <div class="grid-1 gap-20">
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header bg-gradient text-white">
+                            <div><i class="fas fa-sitemap"></i> Regime Transitions</div>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="transitionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header bg-gradient text-white">
+                            <div><i class="fas fa-arrow-right-arrow-left"></i> Volatility Correlation</div>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="correlationChart"></canvas>
+                        </div>
+                    </div>
+    </div>
+
+            <!-- Returns Analysis -->
+            <div class="grid-1 gap-20">
+                
+                    <div class="card">
+                        <div class="card-header bg-gradient text-white">
+                            <div><i class="fas fa-percent"></i> Returns by Regime</div>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="returnsChart"></canvas>
+                        </div>
+                    </div>
+    </div>
+
+            <!-- Detailed Data Table -->
+            <div class="grid-1 gap-20">
+                
+                    <div class="card">
+                        <div class="card-header bg-gradient text-white">
+                            <div><i class="fas fa-table"></i> Detailed Regime History</div>
+                        </div>
+                        <div class="card-body">
+                            
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Period</th>
+                                            <th>Regime</th>
+                                            <th>Duration</th>
+                                            <th>Avg Return</th>
+                                            <th>Max Return</th>
+                                            <th>Min Return</th>
+                                            <th>Volatility</th>
+                                            <th>Sharpe Ratio</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Jan 2024</td>
+                                            <td><span class="badge badge-bull">Bull</span></td>
+                                            <td>31 days</td>
+                                            <td style="color: var(--green)">+2.45%</td>
+                                            <td>+4.12%</td>
+                                            <td>+0.50%</td>
+                                            <td>1.2</td>
+                                            <td>2.04</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Feb 2024</td>
+                                            <td><span class="badge badge-bull">Bull</span></td>
+                                            <td>29 days</td>
+                                            <td style="color: var(--green)">+1.82%</td>
+                                            <td>+3.45%</td>
+                                            <td>-0.25%</td>
+                                            <td>1.45</td>
+                                            <td>1.25</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Mar 2024</td>
+                                            <td><span class="badge badge-side">Neutral</span></td>
+                                            <td>31 days</td>
+                                            <td class="text-warning">+0.52%</td>
+                                            <td>+2.10%</td>
+                                            <td>-1.80%</td>
+                                            <td>2.1</td>
+                                            <td>0.25</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Apr 2024</td>
+                                            <td><span class="badge bg-secondary">Volatile</span></td>
+                                            <td>12 days</td>
+                                            <td class="text-secondary">-0.85%</td>
+                                            <td>+2.50%</td>
+                                            <td>-3.20%</td>
+                                            <td>3.5</td>
+                                            <td>-0.24</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Apr 2024</td>
+                                            <td><span class="badge badge-bull">Bull</span></td>
+                                            <td>15 days</td>
+                                            <td style="color: var(--green)">+3.10%</td>
+                                            <td>+5.20%</td>
+                                            <td>+1.45%</td>
+                                            <td>1.3</td>
+                                            <td>2.38</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/analysis.js') }}"></script>
+{% endblock %}
