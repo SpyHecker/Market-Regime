@@ -10,11 +10,9 @@ from apscheduler.triggers.interval import IntervalTrigger
 import uuid
 
 # Initialize Flask app
-application = Flask(__name__, 
+app = Flask(__name__, 
             template_folder='templates',
             static_folder='static')
-
-app = application()
 
 # Configuration
 app.config['SECRET_KEY'] = 'market-regime-detection-secret-key'
