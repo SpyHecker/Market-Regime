@@ -12,9 +12,8 @@ import uuid
 # Initialize Flask app
 from flask import Flask
 
-application = Flask(__name__)
+app = Flask(__name__)
 
-app = application
 
 @application.route("/")
 def home():
@@ -611,7 +610,7 @@ def inject_config():
 
 
 if __name__ == "__main__":
-    application.run(
-        host="0.0.0.0",
-        port=int(os.environ.get("PORT", 5000))
+    app.run(
+        host="localhost",
+        port=5000
     )
