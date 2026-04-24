@@ -609,24 +609,9 @@ def inject_config():
 # APP STARTUP
 # ===========================
 
-if __name__ == '__main__':
-    print("""
-    ========================================================
-    Multi-Regime Market Detection Engine - LIVE
-    NIFTY50 Analysis
-    ========================================================
-    """)
-    
-    # Initialize analyzer before starting server
-    initialize_analyzer()
-    
-    print("\n" + "="*60)
-    print("Starting Flask server on http://localhost:5000")
-    print("="*60)
-    
-    app.run(
-        host='localhost',
-        port=5000,
-        debug=False,
-        use_reloader=False
+
+if __name__ == "__main__":
+    application.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 5000))
     )
